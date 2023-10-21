@@ -5,6 +5,7 @@ module.exports = {
     v2_meta: true,
     v2_normalizeFormMethod: true,
     v2_routeConvention: true,
+    v2_dev: true,
   },
   ignoredRouteFiles: ["**/.*"],
   tailwind: true,
@@ -12,4 +13,4 @@ module.exports = {
   // assetsBuildDirectory: "public/build",
   // publicPath: "/build/",
   // serverBuildPath: "build/index.js",
-};
+}
