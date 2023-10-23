@@ -6,48 +6,16 @@ import clsx from "clsx"
 import { useMemo } from "react"
 import AppDetail from "~/components/AppDetail"
 import Layout from "~/components/layout"
-import type { Template } from "~/lib/appstore"
+import { getTemplates } from "~/lib/appstore"
+import type { Template } from "~/lib/appstore.type"
 import { inputCN } from "~/lib/styles"
 
-// // 954, many duplicates
-// const TEMPLATES_URL = 'https://yangkghjh.github.io/selfhosted_store/unraid/templates/portainer/template.json'
-
-// // 104
-// const TEMPLATES_URL = 'https://raw.githubusercontent.com/SelfhostedPro/selfhosted_templates/master/Template/template.json'
-
-// // 100 aprox
-// const TEMPLATES_URL = 'https://raw.githubusercontent.com/TheLustriVA/portainer-templates-Nov-2022-collection/main/templates_2_2_rc_2_2.json'
-
-// // 93
-// const TEMPLATES_URL = 'https://raw.githubusercontent.com/pi-hosted/pi-hosted/master/pi-hosted_template/template/portainer-v2.json'
-
-// 337
-const TEMPLATES_URL = 'https://raw.githubusercontent.com/Lissy93/portainer-templates/main/templates.json'
-
-// // 153
-// const TEMPLATES_URL = 'https://raw.githubusercontent.com/technorabilia/portainer-templates/main/lsio/templates/templates-2.0.json'
-
 export async function loader({ request }: LoaderArgs) {
-  const res = await fetch(TEMPLATES_URL)
-  if (!res.ok) {
-    throw new Error('Failed to fetch templates')
-  }
-
-  const data = await res.json()
-  const templates: Template[] = Array.isArray(data) ? data : data.templates
   const query = new URL(request.url).searchParams.get('q') || ''
   const category = new URL(request.url).searchParams.get('category') || ''
+  const templates = await getTemplates({ query, category })
 
-  const filtered = templates.filter((t) => {
-    const baseFilter = t.platform === 'linux'
-    const regex = new RegExp(query, 'i')
-    const queryFilter = query ? regex.test(t.title) || regex.test(t.name || '') : true
-    const categoryFilter = category ? t.categories?.includes(category) : true
-
-    return baseFilter && queryFilter && categoryFilter
-  })
-
-  return json(filtered, {
+  return json(templates, {
     headers: {
       'Cache-Control': 'public, max-age=3600'
     }
@@ -120,18 +88,22 @@ export default function AppStore() {
           </Form>
           <ul className="space-y-4 overflow-auto" style={{ maxHeight: 'calc(100vh - 316px)' }}>
             {data.map((t, i) => (
-              <li key={i}>
+              <li key={`${t.image}-${i}`}>
                 <button
                   onClick={() => toggleOpen(i)}
                   className={clsx(
-                    'flex w-full items-center gap-2 p-2 rounded-md hover:bg-pink-50 transition-colors duration-200',
+                    'flex w-full items-center gap-6 p-2 rounded-md hover:bg-pink-50 transition-colors duration-200',
                     open === i ? 'bg-pink-50' : 'bg-white'
                   )}
                 >
-                  <img src={t.logo} alt={t.title} className="w-12 h-12 block object-contain rounded-full border border-pink-200" />
+                  <img
+                    src={t.logo}
+                    alt={t.title}
+                    className="w-16 h-16 block object-contain rounded-full border border-pink-200"
+                  />
                   <div className="text-left">
                     <p className="text-xl mb-1 font-medium">{t.title}</p>
-                    <p className="text-sm mb-1 truncate max-w-prose">{t.description}</p>
+                    <p className="text-sm mb-1">{t.description}</p>
                   </div>
                 </button>
               </li>

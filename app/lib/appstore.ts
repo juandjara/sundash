@@ -1,56 +1,26 @@
-export enum TemplateType {
-  CONTAINER = 1,
-  SWARM = 2,
-  COMPOSE = 3,
-}
+import type { Template } from "./appstore.type"
 
-export type DockerEnv = {
-  name: string
-  label: string
-  description?: string
-  default?: string
-  preset?: boolean // if set to true, the env var should be hidden from the user
-  select?: EnvSelectOption[] // if set, the env var should be a select
-}
+const TEMPLATES_URL = 'https://raw.githubusercontent.com/Lissy93/portainer-templates/main/templates.json'
 
-type EnvSelectOption = {
-  text: string
-  value: string
-  default?: boolean
-}
+export async function getTemplates({ query, category }: { query: string; category: string }) {
+  const res = await fetch(TEMPLATES_URL)
+  if (!res.ok) {
+    throw new Error('Failed to fetch templates')
+  }
 
-type DockerVolume = {
-  container: string
-  bind?: string
-  readonly?: boolean
-}
+  const data = await res.json()
+  const templates: Template[] = Array.isArray(data) ? data : data.templates
 
-type DockerLabel = {
-  name: string
-  value: string
-}
+  const filtered = templates.filter((t) => {
+    const baseFilter = t.platform === 'linux' //&& t.type !== 1
+    const regex = new RegExp(query, 'i')
+    const queryFilter = query
+      ? regex.test(t.title) || regex.test(t.name || '') || regex.test(t.description || '') || regex.test(t.note || '')
+      : true
+    const categoryFilter = category ? t.categories?.includes(category) : true
 
-export type Template = {
-  version: string
-  type: TemplateType
-  title: string
-  description: string
-  image: string // URL, docker image
-  'administrator-only'?: boolean
-  name?: string
-  logo?: string // URL, png file
-  registry?: string // docker registry
-  command?: string // docker run command
-  env?: DockerEnv[]
-  netowrk?: 'host' | string // docker network
-  volumes?: DockerVolume[]
-  ports?: string[]
-  labels?: DockerLabel[]
-  privileged?: boolean
-  interactive?: boolean
-  restart_policy?: 'always' | 'unless-stopped' | 'on-failure' | 'no'
-  hostname?: string
-  note?: string
-  platform?: 'linux' | 'windows'
-  categories?: string[]
+    return baseFilter && queryFilter && categoryFilter
+  }).sort((a, b) => a.title.localeCompare(b.title))
+
+  return filtered
 }

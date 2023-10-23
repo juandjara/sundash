@@ -1,8 +1,8 @@
 import { ArrowLeftIcon, ArrowRightIcon, PlusCircleIcon } from "@heroicons/react/20/solid"
-import { useSearchParams } from "@remix-run/react"
+import { Link, useSearchParams } from "@remix-run/react"
 import clsx from "clsx"
 import { buttonCN } from "~/lib/styles"
-import type { DockerEnv, Template } from "~/lib/appstore"
+import type { DockerEnv, Template } from "~/lib/appstore.type"
 import Markdown from 'markdown-it'
 import { useMemo } from "react"
 
@@ -15,9 +15,8 @@ function parseMarkdown(text: string) {
 export default function AppDetail({ app }: { app: Template }) {
   const [params, setParams] = useSearchParams()
   const appMarkdown = useMemo(() => {
-    console.log(app)
     const description = app.description ? parseMarkdown(app.description) : ''
-    const note = app.note ? parseMarkdown(app.note) : ''
+    const note = app.note || '' // ? parseMarkdown(app.note.replace('&lt', '<').replace('&gt', '>')) : ''
     const env = app.env?.map((e) => {
       return {
         ...e,
@@ -51,21 +50,25 @@ export default function AppDetail({ app }: { app: Template }) {
         />
         <p className="text-2xl font-medium mt-6 mb-2">{app.title}</p>
         <p
-          className="max-w-prose mb-2 [&>p>a]:underline"
+          className="max-w-prose mb-2 [&_a]:underline"
           dangerouslySetInnerHTML={{ __html: appMarkdown.description }}></p>
         <p
-          className="max-w-prose text-zinc-500 text-sm [&>p>a]:underline [&>p+p]:mt-2"
+          className="max-w-prose text-zinc-500 text-sm [&_a]:underline [&>p+p]:mt-2"
           dangerouslySetInnerHTML={{ __html: appMarkdown.note }}></p>
-        <button className={clsx('mt-6 mb-12', buttonCN.primary, buttonCN.big, buttonCN.iconLeft)}>
-          <PlusCircleIcon className="w-6 h-6" />
-          <p>Edit and Install</p>
-        </button>
+        <Link to={`/edit?${params.toString()}`}>
+          <button className={clsx('mt-2 mb-12', buttonCN.primary, buttonCN.big, buttonCN.iconLeft)}>
+            <PlusCircleIcon className="w-6 h-6" />
+            <p>Edit and Install</p>
+          </button>
+        </Link>
       </header>
       <div className="space-y-6 my-6 mx-2">
-        <div>
-          <label className="block mb-1">Image</label>
-          <p className="text-sm text-zinc-500">{app.image}</p>
-        </div>
+        {app.image ? (
+          <div>
+            <label className="block mb-1">Image</label>
+            <p className="text-sm text-zinc-500">{app.image}</p>
+          </div>
+        ) : null}
         <div>
           <label className="block mb-1">Categories</label>
           <p className="text-sm text-zinc-500">{app.categories?.join(', ')}</p>
@@ -102,7 +105,7 @@ export default function AppDetail({ app }: { app: Template }) {
               {appMarkdown.env?.map((e, i) => (
                 <li key={i} className="text-sm text-zinc-500">
                   <p
-                    className="[&>p]:before:content-['_#_'] [&>p>a]:underline"
+                    className="[&>p]:before:content-['_#_'] [&_a]:underline"
                     dangerouslySetInnerHTML={{ __html: e.comment }}></p>
                   <p>{e.name}={e.default || ''}</p>
                 </li>
@@ -140,12 +143,17 @@ export default function AppDetail({ app }: { app: Template }) {
             <p className="text-sm text-zinc-500">{app.netowrk}</p>
           </div>
         ) : null}
+        <ComposeFilePreview app={app} />
       </div>
     </div>
   )
 }
 
-function getEnvComment(env: DockerEnv) {
+function ComposeFilePreview({ app }: { app: Template }) {
+  return null
+}
+
+export function getEnvComment(env: DockerEnv) {
   let comment = ''
   if (env.preset) {
     comment += 'Should not be edited. '
