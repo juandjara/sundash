@@ -12,7 +12,7 @@ export async function getTemplates({ query, category }: { query: string; categor
   const templates: Template[] = Array.isArray(data) ? data : data.templates
 
   const filtered = templates.filter((t) => {
-    const baseFilter = t.platform === 'linux' //&& t.type !== 1
+    const baseFilter = t.platform === 'linux' // && t.type === 1
     const regex = new RegExp(query, 'i')
     const queryFilter = query
       ? regex.test(t.title) || regex.test(t.name || '') || regex.test(t.description || '') || regex.test(t.note || '')

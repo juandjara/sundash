@@ -7,6 +7,8 @@ import { buttonCN, inputCN } from "~/lib/styles"
 import clsx from "clsx"
 import { getEnvComment } from "~/components/AppDetail"
 import { ArrowLeftIcon } from "@heroicons/react/20/solid"
+import YAML from 'yaml'
+import { useState } from "react"
 
 export async function loader({ request }: LoaderArgs) {
   const query = new URL(request.url).searchParams.get('q') || ''
@@ -14,6 +16,10 @@ export async function loader({ request }: LoaderArgs) {
   const templates = await getTemplates({ query, category })
   const open = Number(new URL(request.url).searchParams.get('open') || '-1')
   const app = templates[open]
+  if (!app) {
+    throw new Response('App not found', { status: 404, statusText: 'Not found' })
+  }
+
   return {
     app,
     composeFile: await getComposeTemplate(app)
@@ -23,6 +29,43 @@ export async function loader({ request }: LoaderArgs) {
 export default function TemplateEditor() {
   const { app, composeFile } = useLoaderData<typeof loader>()
   const navigate = useNavigate()
+  const [text, setText] = useState(composeFile.text)
+
+  function exposeURL(protectedURL: boolean = true) {
+    const json = composeFile.json
+    const port = window.prompt('Which port do you want to expose?', '80')
+    if (Number.isNaN(port || NaN)) {
+      return
+    }
+    const url = window.prompt('Which URL do you want to expose?', 'example.com')
+    if (!url) {
+      return
+    }
+
+    for (const key of Object.keys(json.services)) {
+      // add proxy network
+      json.services[key].networks = json.services[key].networks || []
+      if (!json.services[key].networks.includes('web')) {
+        json.services[key].networks.push('web')
+      }
+
+      // add caddy labels
+      json.services[key].labels = json.services[key].labels || {}
+      json.services[key].labels['caddy'] = url
+      if (protectedURL) {
+        json.services[key].labels['caddy.authorize'] = '"with auth_policy"'
+      }
+      json.services[key].labels['caddy.reverse_proxy'] = `{{upstreams ${port}}}`
+    }
+
+    // ensure external network is defined
+    json.networks = json.networks || {}
+    json.networks.web = {
+      external: true
+    }
+
+    setText(YAML.stringify(json))
+  }
 
   if (!app) {
     return null
@@ -53,10 +96,15 @@ export default function TemplateEditor() {
             className={clsx('h-[500px] bg-zinc-50 font-mono p-3', inputCN)}
             name="compose"
             id="compose"
-            defaultValue={composeFile} 
+            value={text}
+            onChange={(e) => setText(e.target.value)}
           />
         </div>
       </Form>
+      <div className="flex items-center gap-2 pt-6">
+        <button onClick={() => exposeURL(true)} className={clsx(buttonCN.small, buttonCN.transparent)}>Expose Protected URL</button>
+        <button onClick={() => exposeURL(false)} className={clsx(buttonCN.small, buttonCN.transparent)}>Expose Public URL</button>
+      </div>
     </Layout>
   )
 }
@@ -75,15 +123,32 @@ async function getComposeTemplate(app: Template) {
     env += `\n      - ${e.name}=${e.default || ''} ${commentFragment}`
   }
 
-  return `version: '3.3'
+  const name = app.name || app.title
+  const text = `version: '3.3'
 services:
-  ${app.name || app.title}:
+  ${name}:
+    container_name: ${name}
     image: ${app.image}
     restart: ${app.restart_policy || 'unless-stopped'}
     ports:${ports}
     volumes:${volumes}
     environment:${env}
+    labels:
+      caddy: __URL
+      caddy.authorize: "with auth_policy"
+      caddy.reverse_proxy: "{{upstreams __PORT}}"
+    networks:
+      - web
+
+networks:
+  web:
+    external: true
 `
+  return {
+    text,
+    source: 'local',
+    json: YAML.parse(text)
+  }
 }
 
 function formatVolume(volume: DockerVolume) {
@@ -105,5 +170,10 @@ async function fetchRemoteCompose(app: Template) {
     throw new Error(`Failed to fetch compose file from ${url}`)
   }
 
-  return await res.text()
+  const text = await res.text()
+  return {
+    text,
+    source: url,
+    json: YAML.parse(text)
+  }
 }
