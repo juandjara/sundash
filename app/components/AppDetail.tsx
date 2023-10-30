@@ -6,6 +6,7 @@ import type { Template } from "~/lib/appstore.type"
 import Markdown from 'markdown-it'
 import { useMemo } from "react"
 import { getEnvComment } from "~/lib/appstore"
+import packageIconURL from '~/assets/package.svg'
 
 function parseMarkdown(text: string) {
   return new Markdown({ linkify: true, html: true, breaks: true })
@@ -47,7 +48,11 @@ export default function AppDetail({ app }: { app: Template }) {
         <img
           src={app.logo}
           alt={app.title}
-          className="block w-24 mx-auto"
+          className="block h-24 w-auto mx-auto"
+          onError={(ev) => {
+            ev.currentTarget.src = packageIconURL
+            ev.currentTarget.style.padding = '12px'
+          }}
         />
         <p className="text-2xl font-medium mt-6 mb-2">{app.title}</p>
         <p
