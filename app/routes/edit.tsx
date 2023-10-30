@@ -6,8 +6,10 @@ import { buttonCN, inputCN } from "~/lib/styles"
 import clsx from "clsx"
 import { ArrowLeftIcon } from "@heroicons/react/20/solid"
 import YAML from 'yaml'
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Modal from "~/components/Modal"
+import { parseMarkdown } from "~/lib/parseMarkdown"
+import packageIconURL from '~/assets/package.svg'
 
 export async function loader({ request }: LoaderArgs) {
   const query = new URL(request.url).searchParams.get('q') || ''
@@ -30,6 +32,16 @@ export default function TemplateEditor() {
   const navigate = useNavigate()
   const [text, setText] = useState(composeFile.text)
   const [modalOpen, setModalOpen] = useState(false)
+
+  const { description, note } = useMemo(() => {
+    const description = app.description ? parseMarkdown(app.description) : ''
+    const note = app.note ? parseMarkdown(app.note) : ''
+
+    return {
+      note,
+      description,
+    }
+  }, [app])
 
   function addProxyConfig(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault()
@@ -127,10 +139,28 @@ export default function TemplateEditor() {
         <button onClick={() => navigate(-1)} className={clsx('block w-min mb-2', buttonCN.normal, buttonCN.icon, buttonCN.transparent)}>
           <ArrowLeftIcon className='w-5 h-5' />
         </button>
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-1">Install new app</h2>
+        <div className="mb-4">
+          <h2 className="text-3xl font-bold mb-1">Install {app.title || app.name}</h2>
           <p className="text-xl">Edit this docker compose template and deploy it on your server.</p>
         </div>
+      </div>
+      <div className="p-3 border mb-12">
+        <img
+          src={app.logo}
+          alt={app.title}
+          className="block h-24 w-auto"
+          onError={(ev) => {
+            ev.currentTarget.src = packageIconURL
+            ev.currentTarget.style.padding = '12px'
+          }}
+        />
+        <p className="text-2xl font-medium mt-6 mb-2">{app.title}</p>
+        <p
+          className="max-w-prose mb-2 [&_a]:underline"
+          dangerouslySetInnerHTML={{ __html: description }}></p>
+        <p
+          className="max-w-prose text-zinc-500 text-sm [&_a]:underline [&>p+p]:mt-2"
+          dangerouslySetInnerHTML={{ __html: note }}></p>
       </div>
       <Form method="POST">
         <div className="mb-4">

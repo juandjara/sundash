@@ -3,16 +3,10 @@ import { Link, useSearchParams } from "@remix-run/react"
 import clsx from "clsx"
 import { buttonCN } from "~/lib/styles"
 import type { Template } from "~/lib/appstore.type"
-import Markdown from 'markdown-it'
 import { useMemo } from "react"
 import { getEnvComment } from "~/lib/appstore"
 import packageIconURL from '~/assets/package.svg'
-
-function parseMarkdown(text: string) {
-  return new Markdown({ linkify: true, html: true, breaks: true })
-    .disable(['heading'])
-    .render(text)
-}
+import { parseMarkdown } from "~/lib/parseMarkdown"
 
 export default function AppDetail({ app }: { app: Template }) {
   const [params, setParams] = useSearchParams()
@@ -44,7 +38,7 @@ export default function AppDetail({ app }: { app: Template }) {
       <button onClick={close} className={clsx('block w-min', buttonCN.normal, buttonCN.icon, buttonCN.transparent)}>
         <ArrowLeftIcon className='w-5 h-5' />
       </button>
-      <header className=" mx-2">
+      <header className="mx-2">
         <img
           src={app.logo}
           alt={app.title}
