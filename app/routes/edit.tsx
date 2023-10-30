@@ -37,10 +37,12 @@ export default function TemplateEditor() {
     const hasAuth = fd.get('hasAuth') === 'on'
     const url = fd.get('url') as string
     const port = Number(fd.get('port') || NaN)
+    const service = fd.get('service') as string
 
     const editedJson = editComposeForProxy(composeFile.json, {
       port,
       url,
+      service,
       hasAuth
     })
 
@@ -56,11 +58,26 @@ export default function TemplateEditor() {
     return null
   }
 
+  const selectOptions = Object.keys(composeFile.json.services).map((service) => {
+    return (
+      <option key={service} value={service}>{service}</option>
+    )
+  })
+
   return (
     <Layout>
       {modalOpen && (
         <Modal open onClose={() => setModalOpen(false)} title='Add proxy URL configuration'>
+          <p>This will edit your compose file to expose your container port to the given URL</p>
           <form className="mt-6" onSubmit={addProxyConfig}>
+            <div className="mb-6">
+              <label className="text-zinc-500 mb-1 block" htmlFor="service">
+                Select a compose service
+              </label>
+              <select className={clsx('bg-zinc-50 p-[6px]', inputCN)} name="service" id="service" required>
+                {selectOptions}
+              </select>
+            </div>
             <div className="mb-6">
               <label className="text-zinc-500 mb-1 block" htmlFor="port">
                 Internal container port

@@ -135,24 +135,26 @@ async function fetchRemoteCompose(app: Template, branch = 'master'): Promise<Com
   }
 }
 
-export function editComposeForProxy(json: any, params: { url: string, port: number, hasAuth: boolean }) {
-  const { url, port, hasAuth } = params
+export function editComposeForProxy(json: any, params: { url: string, port: number, service: string, hasAuth: boolean }) {
+  const { url, port, service: key, hasAuth } = params
 
-  for (const key of Object.keys(json.services)) {
-    // add proxy network
-    json.services[key].networks = json.services[key].networks || []
-    if (!json.services[key].networks.includes('web')) {
-      json.services[key].networks.push('web')
-    }
-
-    // add caddy labels
-    json.services[key].labels = json.services[key].labels || {}
-    json.services[key].labels['caddy'] = url
-    if (hasAuth) {
-      json.services[key].labels['caddy.authorize'] = '"with auth_policy"'
-    }
-    json.services[key].labels['caddy.reverse_proxy'] = `{{upstreams ${port}}}`
+  if (!json.services[key]) {
+    throw new Error(`Service ${key} not found`)
   }
+
+  // add proxy network
+  json.services[key].networks = json.services[key].networks || []
+  if (!json.services[key].networks.includes('web')) {
+    json.services[key].networks.push('web')
+  }
+
+  // add caddy labels
+  json.services[key].labels = json.services[key].labels || {}
+  json.services[key].labels['caddy'] = url
+  if (hasAuth) {
+    json.services[key].labels['caddy.authorize'] = '"with auth_policy"'
+  }
+  json.services[key].labels['caddy.reverse_proxy'] = `{{upstreams ${port}}}`
 
   // ensure external network is defined
   json.networks = json.networks || {}
