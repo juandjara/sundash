@@ -2,9 +2,10 @@ import { ArrowLeftIcon, ArrowRightIcon, PlusCircleIcon } from "@heroicons/react/
 import { Link, useSearchParams } from "@remix-run/react"
 import clsx from "clsx"
 import { buttonCN } from "~/lib/styles"
-import type { DockerEnv, Template } from "~/lib/appstore.type"
+import type { Template } from "~/lib/appstore.type"
 import Markdown from 'markdown-it'
 import { useMemo } from "react"
+import { getEnvComment } from "~/lib/appstore"
 
 function parseMarkdown(text: string) {
   return new Markdown({ linkify: true, html: true, breaks: true })
@@ -151,23 +152,4 @@ export default function AppDetail({ app }: { app: Template }) {
 
 function ComposeFilePreview({ app }: { app: Template }) {
   return null
-}
-
-export function getEnvComment(env: DockerEnv) {
-  let comment = ''
-  if (env.preset) {
-    comment += 'Should not be edited. '
-  }
-  if (env.select) {
-    const defaultOpt = env.select.find((s) => s.default)
-    const defaultComment = defaultOpt ? `Default is "${defaultOpt.value}"` : ''
-    comment += `choose one of ${env.select.map((s) => {
-      const optionComment = s.text ? ` (${s.text})` : ''
-      return `"${s.value}"${optionComment}`
-    })}. ${defaultComment}`
-  }
-  if (env.description) {
-    comment += env.description
-  }
-  return comment
 }
