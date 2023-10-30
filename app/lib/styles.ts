@@ -59,6 +59,7 @@ export const buttonCN = {
     // 'dark:text-pink-800 dark:bg-pink-100 dark:hover:bg-pink-200'
   ].join(' '),
   transparent: 'text-pink-600 hover:bg-zinc-100',
+  outline: 'text-pink-600 hover:bg-zinc-100 border-2 border-pink-200',
   delete: 'text-red-700 hover:bg-red-50',
   icon: 'pr-2 pl-2',
   iconLeft: 'flex items-center gap-2 pl-2',

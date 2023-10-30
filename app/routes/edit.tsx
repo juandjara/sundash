@@ -1,12 +1,13 @@
 import Layout from "~/components/layout"
 import { Form, useLoaderData, useNavigate } from "@remix-run/react"
 import type { LoaderArgs } from "@remix-run/node"
-import { getComposeTemplate, getTemplate } from "~/lib/appstore"
+import { editComposeForProxy, getComposeTemplate, getTemplate } from "~/lib/appstore"
 import { buttonCN, inputCN } from "~/lib/styles"
 import clsx from "clsx"
 import { ArrowLeftIcon } from "@heroicons/react/20/solid"
 import YAML from 'yaml'
 import { useState } from "react"
+import Modal from "~/components/Modal"
 
 export async function loader({ request }: LoaderArgs) {
   const query = new URL(request.url).searchParams.get('q') || ''
@@ -28,41 +29,27 @@ export default function TemplateEditor() {
   const { app, composeFile } = useLoaderData<typeof loader>()
   const navigate = useNavigate()
   const [text, setText] = useState(composeFile.text)
+  const [modalOpen, setModalOpen] = useState(false)
 
-  function exposeURL(protectedURL: boolean = true) {
-    const json = composeFile.json
-    const port = window.prompt('Which port do you want to expose?', '80')
-    if (Number.isNaN(port || NaN)) {
-      return
-    }
-    const url = window.prompt('Which URL do you want to expose?', 'example.com')
-    if (!url) {
-      return
-    }
+  function addProxyConfig(ev: React.FormEvent<HTMLFormElement>) {
+    ev.preventDefault()
+    const fd = new FormData(ev.currentTarget)
+    const hasAuth = fd.get('hasAuth') === 'on'
+    const url = fd.get('url') as string
+    const port = Number(fd.get('port') || NaN)
 
-    for (const key of Object.keys(json.services)) {
-      // add proxy network
-      json.services[key].networks = json.services[key].networks || []
-      if (!json.services[key].networks.includes('web')) {
-        json.services[key].networks.push('web')
-      }
+    const editedJson = editComposeForProxy(composeFile.json, {
+      port,
+      url,
+      hasAuth
+    })
 
-      // add caddy labels
-      json.services[key].labels = json.services[key].labels || {}
-      json.services[key].labels['caddy'] = url
-      if (protectedURL) {
-        json.services[key].labels['caddy.authorize'] = '"with auth_policy"'
-      }
-      json.services[key].labels['caddy.reverse_proxy'] = `{{upstreams ${port}}}`
-    }
+    setText(YAML.stringify(editedJson))
+    setModalOpen(false)
+  }
 
-    // ensure external network is defined
-    json.networks = json.networks || {}
-    json.networks.web = {
-      external: true
-    }
-
-    setText(YAML.stringify(json))
+  function resetForm() {
+    setText(composeFile.text)
   }
 
   if (!app) {
@@ -71,19 +58,65 @@ export default function TemplateEditor() {
 
   return (
     <Layout>
-      <button onClick={() => navigate(-1)} className={clsx('block w-min mb-2', buttonCN.normal, buttonCN.icon, buttonCN.transparent)}>
-        <ArrowLeftIcon className='w-5 h-5' />
-      </button>
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold mb-1">Install new app</h2>
-        <p className="text-xl">Edit this docker compose template and deploy it on your server.</p>
+      {modalOpen && (
+        <Modal open onClose={() => setModalOpen(false)} title='Add proxy URL configuration'>
+          <form className="mt-6" onSubmit={addProxyConfig}>
+            <div className="mb-6">
+              <label className="text-zinc-500 mb-1 block" htmlFor="port">
+                Internal container port
+              </label>
+              <input
+                className={clsx('bg-zinc-50 px-2 py-1', inputCN)}
+                type="number"
+                name="port"
+                id="port"
+                placeholder="80"
+                required
+              />
+            </div>
+            <div className="mb-6">
+              <label className="text-zinc-500 mb-1 block" htmlFor="url">
+                Exposed URL
+              </label>
+              <input
+                className={clsx('bg-zinc-50 px-2 py-1', inputCN)}
+                type="url"
+                name="url"
+                id="url"
+                placeholder="example.com"
+                required
+              />
+            </div>
+            <div className="mb-6">
+              <label className="text-zinc-500 flex items-center" htmlFor="hasAuth">
+                <input
+                  type="checkbox"
+                  name="hasAuth"
+                  id="hasAuth"
+                  className="mr-2"
+                  defaultChecked
+                />
+                <span>Proxy URL requires authentication</span>
+              </label>
+            </div>
+            <div className="flex items-center gap-2 pt-4">
+              <button type="submit" className={clsx(buttonCN.normal, buttonCN.primary)}>Add</button>
+              <button type="button" onClick={() => setModalOpen(false)} className={clsx(buttonCN.normal, buttonCN.delete)}>Cancel</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      <div className="md:flex items-start gap-2">
+        <button onClick={() => navigate(-1)} className={clsx('block w-min mb-2', buttonCN.normal, buttonCN.icon, buttonCN.transparent)}>
+          <ArrowLeftIcon className='w-5 h-5' />
+        </button>
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold mb-1">Install new app</h2>
+          <p className="text-xl">Edit this docker compose template and deploy it on your server.</p>
+        </div>
       </div>
-      <div className="flex items-center gap-2 pb-6">
-        <button onClick={() => exposeURL(true)} className={clsx(buttonCN.small, buttonCN.primary)}>Expose Protected URL</button>
-        <button onClick={() => exposeURL(false)} className={clsx(buttonCN.small, buttonCN.primary)}>Expose Public URL</button>
-      </div>
-      <Form className="space-y-4">
-        <div>
+      <Form method="POST">
+        <div className="mb-4">
           <label className="text-zinc-500 mb-1 block" htmlFor="name">Compose File</label>
           <input
             className={clsx('bg-zinc-50 px-2 py-1', inputCN)}
@@ -93,7 +126,15 @@ export default function TemplateEditor() {
             defaultValue={`${app.name || app.title}.yml`}
           />
         </div>
-        <div>
+        <div className="flex items-center gap-2 mt-6">
+          <button type="button" onClick={() => setModalOpen(true)} className={clsx(buttonCN.small, buttonCN.outline)}>
+            Add proxy URL configuration
+          </button>
+          <button type="button" onClick={resetForm} className={clsx(buttonCN.small, buttonCN.transparent)}>
+            Reset
+          </button>
+        </div>
+        <div className="my-3">
           <textarea
             className={clsx('h-[500px] bg-zinc-50 font-mono p-3', inputCN)}
             name="compose"
@@ -104,6 +145,10 @@ export default function TemplateEditor() {
             autoComplete="off"
             autoCorrect="off"
           />
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="submit" className={clsx(buttonCN.normal, buttonCN.primary)}>Deploy</button>
+          <button type="button" onClick={() => navigate(-1)} className={clsx(buttonCN.normal, buttonCN.delete)}>Cancel</button>
         </div>
       </Form>
     </Layout>

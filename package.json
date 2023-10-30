@@ -8,6 +8,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
     "@remix-run/node": "1.19.3",
     "@remix-run/react": "1.19.3",
