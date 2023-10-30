@@ -1,5 +1,5 @@
 import Layout from "~/components/layout"
-import { Form, useLoaderData, useNavigate } from "@remix-run/react"
+import { Form, Link, useLoaderData, useNavigate } from "@remix-run/react"
 import type { LoaderArgs } from "@remix-run/node"
 import { editComposeForProxy, getComposeTemplate, getTemplate } from "~/lib/appstore"
 import { buttonCN, inputCN } from "~/lib/styles"
@@ -142,6 +142,9 @@ export default function TemplateEditor() {
             id="name"
             defaultValue={`${app.name || app.title}.yml`}
           />
+          <p className="text-xs mt-2 text-zinc-600">
+            This will create a file with this name in your <Link className="underline" to='/config'>config directory</Link>.
+          </p>
         </div>
         <div className="flex items-center gap-2 mt-6">
           <button type="button" onClick={() => setModalOpen(true)} className={clsx(buttonCN.small, buttonCN.outline)}>
