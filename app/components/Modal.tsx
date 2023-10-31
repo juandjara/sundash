@@ -1,11 +1,7 @@
 import { Dialog, Transition } from "@headlessui/react"
 import { Fragment } from "react"
 
-const panelCN = [
-  'bg-slate-50 dark:bg-slate-700',
-  'w-full max-w-md p-4 transform rounded-lg shadow-xl transition-all'
-].join(' ')
-
+const panelCN = 'bg-slate-50 w-full max-w-md p-4 transform rounded-lg shadow-xl transition-all'
 type ModalProps = {
   title: string
   open: boolean
