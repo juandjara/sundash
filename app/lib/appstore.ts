@@ -1,7 +1,8 @@
 import type { DockerEnv, DockerVolume, Template } from "./appstore.type"
 import YAML from 'yaml'
 
-const TEMPLATES_URL = 'https://raw.githubusercontent.com/Lissy93/portainer-templates/main/templates.json'
+// const TEMPLATES_URL = 'https://raw.githubusercontent.com/Lissy93/portainer-templates/main/templates.json'
+const TEMPLATES_URL = 'https://templates-portainer.ibaraki.app'
 
 type GetTemplatesParams = {
   query: string
@@ -135,31 +136,85 @@ async function fetchRemoteCompose(app: Template, branch = 'master'): Promise<Com
   }
 }
 
-export function editComposeForProxy(json: any, params: { url: string, port: number, service: string, hasAuth: boolean }) {
-  const { url, port, service: key, hasAuth } = params
+export function editComposeForSundash(json: any, params: { title: string, logo: string, service: string }) {
+  const { title, logo, service: key } = params
 
   if (!json.services[key]) {
     throw new Error(`Service ${key} not found`)
   }
 
-  // add proxy network
-  json.services[key].networks = json.services[key].networks || []
-  if (!json.services[key].networks.includes('web')) {
-    json.services[key].networks.push('web')
+  const service = json.services[key]
+
+  // ensure service has container name
+  service.container_name = service.container_name || key
+
+  json['x-sundash'] = {
+    title,
+    logo,
+    main_container: service.container_name,
   }
 
-  // add caddy labels
-  json.services[key].labels = json.services[key].labels || {}
-  json.services[key].labels['caddy'] = url
-  if (hasAuth) {
-    json.services[key].labels['caddy.authorize'] = '"with auth_policy"'
-  }
-  json.services[key].labels['caddy.reverse_proxy'] = `{{upstreams ${port}}}`
+  return json
+}
 
-  // ensure external network is defined
-  json.networks = json.networks || {}
-  json.networks.web = {
-    external: true
+export function editComposeForProxy(json: any, params: {
+  url: string,
+  port: number,
+  service: string,
+  hasAuth: boolean
+  proxyEnabled: boolean
+}) {
+  const { url, port, service: key, hasAuth, proxyEnabled } = params
+
+  if (!json.services[key]) {
+    throw new Error(`Service ${key} not found`)
+  }
+
+  if (proxyEnabled) {
+    // add proxy network
+    json.services[key].networks = json.services[key].networks || []
+    if (!json.services[key].networks.includes('web')) {
+      json.services[key].networks.push('web')
+    }
+  
+    // add caddy labels
+    json.services[key].labels = json.services[key].labels || {}
+    json.services[key].labels['caddy'] = url
+    if (hasAuth) {
+      json.services[key].labels['caddy.authorize'] = 'with auth_policy'
+    } else {
+      delete json.services[key].labels['caddy.authorize']
+    }
+    json.services[key].labels['caddy.reverse_proxy'] = `{{upstreams ${port}}}`
+  
+    // ensure external network is defined
+    json.networks = json.networks || {}
+    json.networks.web = {
+      external: true
+    }
+  } else {
+    // remove proxy network
+    json.services[key].networks = json.services[key].networks || []
+    json.services[key].networks = json.services[key].networks.filter((n: string) => n !== 'web')
+    if (json.services[key].networks.length === 0) {
+      delete json.services[key].networks
+    }
+  
+    // remove caddy labels
+    json.services[key].labels = json.services[key].labels || {}
+    delete json.services[key].labels['caddy']
+    delete json.services[key].labels['caddy.authorize']
+    delete json.services[key].labels['caddy.reverse_proxy']
+    if (Object.keys(json.services[key].labels).length === 0) {
+      delete json.services[key].labels
+    }
+
+    // remove external network
+    json.networks = json.networks || {}
+    delete json.networks.web
+    if (Object.keys(json.networks).length === 0) {
+      delete json.networks
+    }
   }
 
   return json
