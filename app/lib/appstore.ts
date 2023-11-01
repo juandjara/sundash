@@ -1,5 +1,4 @@
 import type { DockerEnv, DockerVolume, Template } from "./appstore.type"
-import YAML from 'yaml'
 
 // const TEMPLATES_URL = 'https://raw.githubusercontent.com/Lissy93/portainer-templates/main/templates.json'
 const TEMPLATES_URL = 'https://templates-portainer.ibaraki.app'
@@ -89,11 +88,7 @@ services:
     volumes:${volumes}
     environment:${env}
 `
-  return {
-    text,
-    source: 'local',
-    json: YAML.parse(text)
-  }
+  return text
 }
 
 function slugify(text: string) {
@@ -111,13 +106,7 @@ function formatVolume(volume: DockerVolume) {
   return fragment
 }
 
-type ComposeFile = {
-  text: string
-  source: string
-  json: any
-}
-
-async function fetchRemoteCompose(app: Template, branch = 'master'): Promise<ComposeFile> {
+async function fetchRemoteCompose(app: Template, branch = 'master'): Promise<string> {
   const url = `${app.repository?.url}/blob/${branch}/${app.repository?.stackfile}?raw=true`
   const res = await fetch(url)
   if (!res.ok) {
@@ -128,12 +117,8 @@ async function fetchRemoteCompose(app: Template, branch = 'master'): Promise<Com
     throw new Error(`Failed to fetch compose file from ${url}`)
   }
 
-  const text = await res.text()
-  return {
-    text,
-    source: url,
-    json: YAML.parse(text)
-  }
+  const yaml = await res.text()
+  return yaml
 }
 
 export function editComposeForSundash(json: any, params: { title: string, logo: string, service: string }) {
@@ -149,9 +134,9 @@ export function editComposeForSundash(json: any, params: { title: string, logo: 
   service.container_name = service.container_name || key
 
   json['x-sundash'] = {
+    main_container: service.container_name,
     title,
     logo,
-    main_container: service.container_name,
   }
 
   return json

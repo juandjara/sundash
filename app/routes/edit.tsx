@@ -7,7 +7,6 @@ import clsx from "clsx"
 import { ArrowLeftIcon } from "@heroicons/react/20/solid"
 import YAML from 'yaml'
 import { useEffect, useMemo, useRef, useState } from "react"
-import { parseMarkdown } from "~/lib/parseMarkdown"
 import packageIconURL from '~/assets/package.svg'
 
 export async function loader({ request }: LoaderArgs) {
@@ -22,26 +21,18 @@ export async function loader({ request }: LoaderArgs) {
 
   return {
     app,
-    composeFile: await getComposeTemplate(app)
+    composeYaml: await getComposeTemplate(app)
   }
 }
 
 export default function TemplateEditor() {
-  const { app, composeFile } = useLoaderData<typeof loader>()
+  const { app, composeYaml } = useLoaderData<typeof loader>()
   const navigate = useNavigate()
-  const [text, setText] = useState(composeFile.text)
+  const [text, setText] = useState(composeYaml)
   const [proxyEnabled, setProxyEnabled] = useState(true)
   const formRef = useRef<HTMLFormElement>(null)
-
-  const { description, note } = useMemo(() => {
-    const description = app.description ? parseMarkdown(app.description) : ''
-    const note = app.note ? parseMarkdown(app.note) : ''
-
-    return {
-      note,
-      description,
-    }
-  }, [app])
+  const [logo, setLogo] = useState(app.logo)
+  const composeJSON = useMemo(() => YAML.parse(text), [text])
 
   useEffect(() => {
     if (formRef.current) {
@@ -55,14 +46,14 @@ export default function TemplateEditor() {
   }, [])
 
   function resetForm() {
-    setText(composeFile.text)
+    setText(composeYaml)
   }
 
   function getDefaults() {
-    const key = Object.keys(composeFile.json.services)[0]
-    const service = composeFile.json.services[key]
-    const portParts = service.ports[0].split(':')
-    const port = Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', ''))
+    const key = Object.keys(composeJSON.services)[0]
+    const service = composeJSON.services[key]
+    const portParts = service.ports?.[0].split(':')
+    const port = portParts && Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', ''))
     const url = `${app.name}.example.com`
     return { port, url, service: key }
   }
@@ -72,7 +63,7 @@ export default function TemplateEditor() {
     const fd = new FormData(ev.currentTarget)
     const service = fd.get('service') as string
 
-    const withSundashConfig = editComposeForSundash(composeFile.json, {
+    const withSundashConfig = editComposeForSundash(composeJSON, {
       title: fd.get('title') as string,
       logo: fd.get('logoURL') as string,
       service,
@@ -93,7 +84,7 @@ export default function TemplateEditor() {
     return null
   }
 
-  const selectOptions = Object.keys(composeFile.json.services).map((service) => {
+  const selectOptions = Object.keys(composeJSON.services).map((service) => {
     return (
       <option key={service} value={service}>{service}</option>
     )
@@ -105,41 +96,19 @@ export default function TemplateEditor() {
         <button onClick={() => navigate(-1)} className={clsx('block w-min mb-2', buttonCN.normal, buttonCN.icon, buttonCN.transparent)}>
           <ArrowLeftIcon className='w-5 h-5' />
         </button>
-        <div className="mb-4">
+        <div className="mb-6">
           <h2 className="text-3xl font-bold mb-1">Install {app.title || app.name}</h2>
           <p className="text-xl">Edit this docker compose template and deploy it on your server.</p>
         </div>
       </div>
-      <div className="p-3 border mb-8">
-        <img
-          src={app.logo}
-          alt={app.title}
-          className="block h-24 w-auto"
-          onError={(ev) => {
-            ev.currentTarget.src = packageIconURL
-            ev.currentTarget.style.padding = '12px'
-          }}
-        />
-        <p className="text-2xl font-medium mt-6 mb-2">{app.title}</p>
-        {description && (
-          <p
-            className="max-w-prose mb-2 [&_a]:underline"
-            dangerouslySetInnerHTML={{ __html: description }}></p>
-        )}
-        {note && (
-          <p
-            className="max-w-prose text-zinc-500 text-sm [&_a]:underline [&>p+p]:mt-2"
-            dangerouslySetInnerHTML={{ __html: note }}></p>
-        )}
-      </div>
-      <div className="flex flex-wrap items-start gap-4 mb-12">
+      <div className="flex flex-wrap items-start gap-6 my-6">
         <form
           onSubmit={updateComposeFile}
           onBlur={updateComposeFile}
           className="max-w-md w-full"
           ref={formRef}
         >
-          <div className="mb-4">
+          <div className="mb-6">
             <label className="text-zinc-500 mb-1 block">Title</label>
             <input 
               className={clsx('bg-zinc-50 px-2 py-1', inputCN)}
@@ -149,19 +118,42 @@ export default function TemplateEditor() {
               defaultValue={app.title}
             />
           </div>
-          <div className="mb-4">
-            <label className="text-zinc-500 mb-1 block">Logo URL</label>
-            <input 
-              className={clsx('bg-zinc-50 px-2 py-1', inputCN)}
-              type="url"
-              name="logoURL"
-              id="logoURL"
-              defaultValue={app.logo}
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex-grow">
+              <label className="text-zinc-500 mb-1 block">Logo URL</label>
+              <input 
+                className={clsx('bg-zinc-50 px-2 py-1', inputCN)}
+                type="url"
+                name="logoURL"
+                id="logoURL"
+                value={logo}
+                onChange={(e) => setLogo(e.target.value)}
+              />
+            </div>
+            <img
+              src={logo}
+              alt='app logo'
+              width="64"
+              height="64"
+              className="w-16 h-16 block object-contain rounded-full shadow shadow-pink-200 p-0.5"
+              onError={(ev) => {
+                ev.currentTarget.src = packageIconURL
+                ev.currentTarget.style.padding = '12px'
+              }}
             />
+            {/* <img
+              src={app.logo}
+              alt={app.title}
+              className="block h-24 w-auto"
+              onError={(ev) => {
+                ev.currentTarget.src = packageIconURL
+                ev.currentTarget.style.padding = '12px'
+              }}
+            /> */}
           </div>
           <p className="mt-8 text-lg">Exposed URL configuration</p>
-          <hr className="mt-2 mb-4" />
-          <div className="mb-4">
+          <hr className="mt-2 mb-6" />
+          <div className="mb-6">
             <label className="text-zinc-500 flex items-center" htmlFor="proxyEnabled">
               <input
                 type="checkbox"
@@ -175,7 +167,7 @@ export default function TemplateEditor() {
             </label>
           </div>
           <fieldset aria-disabled={!proxyEnabled} className="aria-disabled:opacity-50 aria-disabled:pointer-events-none">
-            <div className="mb-4">
+            <div className="mb-6">
               <label className="text-zinc-500 flex items-center" htmlFor="hasAuth">
                 <input
                   type="checkbox"
@@ -187,7 +179,7 @@ export default function TemplateEditor() {
                 <span>Exposed URL requires authentication</span>
               </label>
             </div>
-            <div className="mb-4">
+            <div className="mb-6">
               <label className="text-zinc-500 mb-1 block" htmlFor="service">
                 Select a compose service
               </label>
@@ -195,7 +187,7 @@ export default function TemplateEditor() {
                 {selectOptions}
               </select>
             </div>
-            <div className="mb-4">
+            <div className="mb-6">
               <label className="text-zinc-500 mb-1 block" htmlFor="port">
                 Internal container port
               </label>
@@ -209,7 +201,7 @@ export default function TemplateEditor() {
                 defaultValue={getDefaults().port}
               />
             </div>
-            <div className="mb-4">
+            <div className="mb-6">
               <label className="text-zinc-500 mb-1 block" htmlFor="url">
                 Exposed URL
               </label>
@@ -239,7 +231,7 @@ export default function TemplateEditor() {
               This will create a file with this name in your <Link className="underline" to='/config'>config directory</Link>.
             </p>
           </div>
-          <div className="mb-3">
+          <div className="mb-4">
             <textarea
               className={clsx('h-[500px] bg-zinc-50 font-mono p-3', inputCN)}
               name="compose"
