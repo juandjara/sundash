@@ -4,7 +4,7 @@ import { json } from "@remix-run/node"
 import { Form, useLoaderData, useSearchParams, useSubmit } from "@remix-run/react"
 import clsx from "clsx"
 import { useMemo } from "react"
-import AppDetail from "~/components/AppDetail"
+import TemplateDetail from "~/components/TemplateDetail"
 import Layout from "~/components/layout"
 import { getTemplates } from "~/lib/appstore"
 import type { Template } from "~/lib/appstore.type"
@@ -42,7 +42,7 @@ export default function AppStore() {
   const query = params.get('q') || ''
   const category = params.get('category') || ''
   const open = Number(params.get('open') || -1)
-  const appDetail = data[open]
+  const templateDetail = data[open]
 
   function toggleOpen(i: number) {
     if (open === i) {
@@ -113,7 +113,7 @@ export default function AppStore() {
             ))}
           </ul>
         </div>
-        {appDetail && <AppDetail app={appDetail} />}
+        {templateDetail && <TemplateDetail template={templateDetail} />}
         <div></div>
       </div>
     </Layout>

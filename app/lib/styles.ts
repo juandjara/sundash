@@ -45,8 +45,8 @@ export const labelCN = 'mb-1 block text-zinc-500 dark:text-zinc-100 text-sm'
 const buttonCommon = [
   'rounded-md',
   'font-medium',
-  'disabled:opacity-50',
-  'disabled:pointer-events-none'
+  'aria-disabled:opacity-50',
+  'aria-disabled:pointer-events-none'
 ].join(' ')
 
 export const buttonCN = {

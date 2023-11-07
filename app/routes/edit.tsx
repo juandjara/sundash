@@ -1,6 +1,6 @@
 import Layout from "~/components/layout"
-import { Link, useLoaderData, useNavigate } from "@remix-run/react"
-import type { LoaderArgs } from "@remix-run/node"
+import { Form, Link, useLoaderData, useNavigate, useNavigation } from "@remix-run/react"
+import { redirect, type ActionArgs, type LoaderArgs } from "@remix-run/node"
 import { editComposeForProxy, editComposeForSundash, getComposeTemplate, getTemplate } from "~/lib/appstore"
 import { buttonCN, inputCN } from "~/lib/styles"
 import clsx from "clsx"
@@ -8,6 +8,7 @@ import { ArrowLeftIcon } from "@heroicons/react/20/solid"
 import YAML from 'yaml'
 import { useEffect, useMemo, useRef, useState } from "react"
 import Logo from "~/components/Logo"
+import { saveApp } from "~/lib/apps"
 
 export async function loader({ request }: LoaderArgs) {
   const query = new URL(request.url).searchParams.get('q') || ''
@@ -25,6 +26,14 @@ export async function loader({ request }: LoaderArgs) {
   }
 }
 
+export async function action({ request }: ActionArgs) {
+  const fd = await request.formData()
+  const name = fd.get('name') as string
+  const compose = fd.get('compose') as string
+  await saveApp({ name, compose })
+  return redirect('/apps')
+}
+
 export default function TemplateEditor() {
   const { app, composeYaml } = useLoaderData<typeof loader>()
   const navigate = useNavigate()
@@ -33,6 +42,8 @@ export default function TemplateEditor() {
   const formRef = useRef<HTMLFormElement>(null)
   const [logo, setLogo] = useState(app.logo)
   const composeJSON = useMemo(() => YAML.parse(text), [text])
+  const transition = useNavigation()
+  const busy = transition.state !== 'idle'
 
   useEffect(() => {
     if (formRef.current) {
@@ -204,7 +215,7 @@ export default function TemplateEditor() {
             </div>
           </fieldset>
         </form>
-        <div className="flex-grow">
+        <Form method="POST" className="flex-grow">
           <div className="mb-5">
             <label className="text-zinc-500 mb-1 block" htmlFor="name">Compose file</label>
             <input
@@ -231,12 +242,12 @@ export default function TemplateEditor() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <button type="submit" className={clsx(buttonCN.normal, buttonCN.primary)}>Deploy</button>
-            <button type="button" onClick={resetForm} className={clsx(buttonCN.normal, buttonCN.transparent)}>Reset</button>
+            <button aria-disabled={busy} type="submit" className={clsx(buttonCN.normal, buttonCN.primary)}>Deploy</button>
+            <button aria-disabled={busy} type="button" onClick={resetForm} className={clsx(buttonCN.normal, buttonCN.transparent)}>Reset</button>
             <div className="flex-grow"></div>
             <button type="button" onClick={() => navigate(-1)} className={clsx(buttonCN.normal, buttonCN.delete)}>Cancel</button>
           </div>
-        </div>
+        </Form>
       </div>
     </Layout>
   )

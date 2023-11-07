@@ -67,17 +67,12 @@ export type PsService = ReturnType<typeof parseService>
 
 function parseService(composeService: any) {
   return {
-    command: composeService.Command,
     created: composeService.CreatedAt,
     id: composeService.ID,
-    image: composeService.Image,
-    name: composeService.Name,
-    ports: composeService.Ports,
-    state: composeService.State,
-    status: composeService.Status,
-    labels: Object.fromEntries(composeService.Labels.split(',').map((l: string) => l.split('='))),
-    service: composeService.Service,
-    mounts: composeService.Mounts,
-    networks: composeService.Networks,
+    image: composeService.Image as string,
+    name: composeService.Name as string,
+    state: composeService.State as 'paused' | 'restarting' | 'removing' | 'running' | 'dead' | 'created' | 'exited',
+    status: composeService.Status as string,
+    service: composeService.Service as string,
   }
 }

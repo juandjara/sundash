@@ -101,8 +101,8 @@ export async function getApps() {
       runtime,
       title,
       logo,
-    } satisfies ComposeJSONExtra
-  })
+    }
+  }) as ComposeJSONExtra[]
 }
 
 export function getServiceKey(app: ComposeJSON) {
@@ -120,4 +120,12 @@ export function getAppTitle(app: ComposeJSON) {
 
 export function getAppLogo(app: ComposeJSON) {
   return app['x-sundash']?.logo || `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/${getServiceKey(app)}.png`
+}
+
+export async function saveApp({ name, compose }: { name: string; compose: string }) {
+  const fullPath = path.join(
+    env.configFolder,
+    name.endsWith('.yml') ? name : `${name}.yml`
+  )
+  await fs.writeFile(fullPath, compose)
 }
