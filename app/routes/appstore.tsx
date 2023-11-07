@@ -9,7 +9,7 @@ import Layout from "~/components/layout"
 import { getTemplates } from "~/lib/appstore"
 import type { Template } from "~/lib/appstore.type"
 import { inputCN } from "~/lib/styles"
-import packageIconURL from '~/assets/package.svg'
+import Logo from "~/components/Logo"
 
 export async function loader({ request }: LoaderArgs) {
   const query = new URL(request.url).searchParams.get('q') || ''
@@ -97,16 +97,12 @@ export default function AppStore() {
                     open === i ? 'bg-pink-50' : 'bg-white'
                   )}
                 >
-                  <img
+                  <Logo
                     src={t.logo}
                     alt={t.title}
                     width="64"
                     height="64"
                     className="w-16 h-16 block object-contain rounded-full shadow shadow-pink-200 bg-red-200 p-0.5"
-                    onError={(ev) => {
-                      ev.currentTarget.src = packageIconURL
-                      ev.currentTarget.style.padding = '12px'
-                    }}
                   />
                   <div className="text-left">
                     <p className="text-xl mb-1 font-medium">{t.title}</p>

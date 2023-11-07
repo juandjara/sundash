@@ -5,8 +5,8 @@ import { buttonCN } from "~/lib/styles"
 import type { Template } from "~/lib/appstore.type"
 import { useMemo } from "react"
 import { getEnvComment } from "~/lib/appstore"
-import packageIconURL from '~/assets/package.svg'
 import { parseMarkdown } from "~/lib/parseMarkdown"
+import Logo from "./Logo"
 
 export default function AppDetail({ app }: { app: Template }) {
   const [params, setParams] = useSearchParams()
@@ -39,14 +39,10 @@ export default function AppDetail({ app }: { app: Template }) {
         <ArrowLeftIcon className='w-5 h-5' />
       </button>
       <header className="mx-2">
-        <img
+        <Logo
           src={app.logo}
           alt={app.title}
           className="block h-24 w-auto mx-auto"
-          onError={(ev) => {
-            ev.currentTarget.src = packageIconURL
-            ev.currentTarget.style.padding = '12px'
-          }}
         />
         <p className="text-2xl font-medium mt-6 mb-2">{app.title}</p>
         <p

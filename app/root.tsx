@@ -1,4 +1,4 @@
-import type { LinksFunction } from "@remix-run/node"
+import type { LinksFunction, V2_MetaFunction } from "@remix-run/node"
 import {
   Links,
   LiveReload,
@@ -13,6 +13,8 @@ import stylesheet from "~/tailwind.css"
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
 ]
+
+export const meta: V2_MetaFunction = () => [{ title: "SunDASH" }]
 
 export default function App() {
   return (

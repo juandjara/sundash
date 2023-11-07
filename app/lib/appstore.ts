@@ -1,7 +1,7 @@
 import type { DockerEnv, DockerVolume, Template } from "./appstore.type"
 
-// const TEMPLATES_URL = 'https://raw.githubusercontent.com/Lissy93/portainer-templates/main/templates.json'
 const TEMPLATES_URL = 'https://templates-portainer.ibaraki.app'
+// const TEMPLATES_URL = 'https://raw.githubusercontent.com/SelfhostedPro/selfhosted_templates/master/Template/yacht.json'
 
 type GetTemplatesParams = {
   query: string
@@ -164,7 +164,11 @@ export function editComposeForProxy(json: any, params: {
   
     // add caddy labels
     json.services[key].labels = json.services[key].labels || {}
-    json.services[key].labels['caddy'] = url
+  
+    const fullUrl = new URL(url.startsWith('http') ? url : `http://${url}`)
+    fullUrl.protocol = 'http'
+    json.services[key].labels['caddy'] = fullUrl.toString()
+
     if (hasAuth) {
       json.services[key].labels['caddy.authorize'] = 'with auth_policy'
     } else {

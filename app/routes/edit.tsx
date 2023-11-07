@@ -7,7 +7,7 @@ import clsx from "clsx"
 import { ArrowLeftIcon } from "@heroicons/react/20/solid"
 import YAML from 'yaml'
 import { useEffect, useMemo, useRef, useState } from "react"
-import packageIconURL from '~/assets/package.svg'
+import Logo from "~/components/Logo"
 
 export async function loader({ request }: LoaderArgs) {
   const query = new URL(request.url).searchParams.get('q') || ''
@@ -130,26 +130,13 @@ export default function TemplateEditor() {
                 onChange={(e) => setLogo(e.target.value)}
               />
             </div>
-            <img
+            <Logo
               src={logo}
               alt='app logo'
               width="64"
               height="64"
               className="w-16 h-16 block object-contain rounded-full shadow shadow-pink-200 p-0.5"
-              onError={(ev) => {
-                ev.currentTarget.src = packageIconURL
-                ev.currentTarget.style.padding = '12px'
-              }}
             />
-            {/* <img
-              src={app.logo}
-              alt={app.title}
-              className="block h-24 w-auto"
-              onError={(ev) => {
-                ev.currentTarget.src = packageIconURL
-                ev.currentTarget.style.padding = '12px'
-              }}
-            /> */}
           </div>
           <p className="mt-8 text-lg">Exposed URL configuration</p>
           <hr className="mt-2 mb-6" />
