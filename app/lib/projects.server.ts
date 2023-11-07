@@ -47,11 +47,37 @@ export async function getProjects() {
   }))
 }
 
-export async function getPS(path: string) {
-  const res = await compose.ps({ cwd: path, commandOptions: ['--all', '--services'] })
-  if (res.exitCode !== 0) {
-    throw new Error(String(res.err || res.out))
+export async function getPS(psPath: string) {
+  const normalizedPath = path.join(psPath)
+  const res = await compose.ps({
+    cwd: normalizedPath,
+    commandOptions: ['--all', ['--format', 'json']]
+  })
+  try {
+    const servicesRaw = JSON.parse(`[${res.out.trim().replace(/\}\{/g, '},{')}]`)
+    return {
+      services: servicesRaw.map(parseService) as PsService[],
+    }
+  } catch (err) {
+    throw new Error('Error parsing stdout JSON')
   }
+}
 
-  return res.data
+export type PsService = ReturnType<typeof parseService>
+
+function parseService(composeService: any) {
+  return {
+    command: composeService.Command,
+    created: composeService.CreatedAt,
+    id: composeService.ID,
+    image: composeService.Image,
+    name: composeService.Name,
+    ports: composeService.Ports,
+    state: composeService.State,
+    status: composeService.Status,
+    labels: Object.fromEntries(composeService.Labels.split(',').map((l: string) => l.split('='))),
+    service: composeService.Service,
+    mounts: composeService.Mounts,
+    networks: composeService.Networks,
+  }
 }

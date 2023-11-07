@@ -2,6 +2,8 @@ import env from "./env.server"
 import fs from 'fs/promises'
 import path from 'path'
 import YAML from 'yaml'
+import type { PsService} from "./projects.server"
+import { getPS } from "./projects.server"
 
 type ComposeJSON = {
   version?: string
@@ -39,6 +41,7 @@ type ComposeJSON = {
     main_container: string
     title: string
     logo: string
+    service: string
     // TODO add this:
     // name: string
     // description: string
@@ -48,25 +51,70 @@ type ComposeJSON = {
   }
 }
 
+export type ComposeJSONExtra = ComposeJSON & {
+  filename: string
+  id: string
+  key: string
+  runtime: PsService
+  title: string
+  logo: string
+}
+
+export async function getAppsState() {
+  const configFolder = env.configFolder
+  const { services } = await getPS(configFolder)
+  return services.reduce((acc, s) => {
+    acc[s.service] = s
+    return acc
+  }, {} as Record<string, PsService>)
+}
+
+// make sure the result of parsing yaml as json contains a valid docker compose file
+export function validateComposeJSON(app: ComposeJSON) {
+  return app && app.version && app.services && Object.keys(app.services).length > 0
+}
+
 export async function getApps() {
   const configFolder = env.configFolder
   const dir = await fs.readdir(configFolder)
   const ymls = dir.filter((d) => path.extname(d) === '.yml')
   const promises = ymls.map((y) => fs.readFile(path.join(configFolder, y), 'utf-8'))
   const texts = await Promise.all(promises)
-  const apps = texts.map((t) => YAML.parse(t) as ComposeJSON)
-  return apps
+  const apps = texts
+    .map((t, i) => ({
+      filename: ymls[i],
+      app: YAML.parse(t) as ComposeJSON
+    }))
+    .filter(({ app }) => validateComposeJSON(app))
+
+  const state = await getAppsState()
+  return apps.map(({ app, filename }) => {
+    const key = getServiceKey(app)
+    const runtime = state[key]
+    const title = getAppTitle(app)
+    const logo = getAppLogo(app)
+    return {
+      ...app,
+      filename,
+      id: filename,
+      key,
+      runtime,
+      title,
+      logo,
+    } satisfies ComposeJSONExtra
+  })
 }
 
 export function getServiceKey(app: ComposeJSON) {
-  const appKey = app['x-sundash']?.main_container
+  const appKey = app['x-sundash']?.service
   const defaultKey = Object.keys(app.services || {})[0]
   return appKey || defaultKey
 }
 
 export function getAppTitle(app: ComposeJSON) {
   const appTitle = app['x-sundash']?.title
-  const defaultTitle = app.services[getServiceKey(app)].container_name
+  const key = getServiceKey(app)
+  const defaultTitle = app.services[key].container_name || key
   return appTitle || defaultTitle
 }
 

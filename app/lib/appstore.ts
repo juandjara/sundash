@@ -134,6 +134,7 @@ export function editComposeForSundash(json: any, params: { title: string, logo: 
   service.container_name = service.container_name || key
 
   json['x-sundash'] = {
+    service: key,
     main_container: service.container_name,
     title,
     logo,
