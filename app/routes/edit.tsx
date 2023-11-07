@@ -52,7 +52,7 @@ export default function TemplateEditor() {
   function getDefaults() {
     const key = Object.keys(composeJSON.services)[0]
     const service = composeJSON.services[key]
-    const portParts = service.ports?.[0].split(':')
+    const portParts = service.ports?.[0] && service.ports[0].split(':')
     const port = portParts && Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', ''))
     const url = `${app.name}.example.com`
     return { port, url, service: key }
@@ -240,7 +240,7 @@ export default function TemplateEditor() {
               onChange={(e) => setText(e.target.value)}
               autoCapitalize="off"
               autoComplete="off"
-              autoCorrect="off"
+              spellCheck="false"
             />
           </div>
           <div className="flex items-center gap-2">
