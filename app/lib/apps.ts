@@ -4,6 +4,7 @@ import path from 'path'
 import YAML from 'yaml'
 import type { PsService} from "./projects.server"
 import { getPS } from "./projects.server"
+import dotenv from 'dotenv'
 
 type ComposeJSON = {
   version?: string
@@ -55,7 +56,8 @@ export type ComposeJSONExtra = ComposeJSON & {
   filename: string
   id: string
   key: string
-  runtime: PsService
+  enabled: boolean
+  runtime?: PsService
   title: string
   logo: string
 }
@@ -71,11 +73,54 @@ export async function getAppsState() {
 
 // make sure the result of parsing yaml as json contains a valid docker compose file
 export function validateComposeJSON(app: ComposeJSON) {
-  return app && app.version && app.services && Object.keys(app.services).length > 0
+  return Boolean(app && app.version && app.services && Object.keys(app.services).length > 0)
+}
+
+async function fileExists(filename: string) {
+  try {
+    await fs.access(filename, fs.constants.R_OK) // check file exists and is readable
+    return true
+  } catch (err) {
+    return false
+  }
+}
+
+export async function getApp(filename: string) {
+  const configFolder = env.configFolder
+  const fullPath = path.join(configFolder, filename)
+
+  if (!(await fileExists(fullPath))) {
+    throw new Error(`File not found: ${fullPath}`)
+  }
+
+  const text = await fs.readFile(fullPath, 'utf-8')
+  const app = YAML.parse(text) as ComposeJSON
+  if (!validateComposeJSON(app)) {
+    throw new Error(`Invalid compose file: ${fullPath}`)
+  }
+
+  const state = await getAppsState()
+  const key = getServiceKey(app)
+  const runtime = state[key]
+  const title = getAppTitle(app)
+  const logo = getAppLogo(app)
+  return {
+    ...app,
+    filename,
+    id: filename,
+    key,
+    runtime,
+    title,
+    logo,
+  } as ComposeJSONExtra
 }
 
 export async function getApps() {
   const configFolder = env.configFolder
+  const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
+  const separator = configFolderENV.parsed?.COMPOSE_FILE_SEPARATOR || ':'
+  const composeFiles = (configFolderENV.parsed?.COMPOSE_FILE || 'docker-compose.yml').split(separator)
+
   const dir = await fs.readdir(configFolder)
   const ymls = dir.filter((d) => path.extname(d) === '.yml')
   const promises = ymls.map((y) => fs.readFile(path.join(configFolder, y), 'utf-8'))
@@ -97,6 +142,7 @@ export async function getApps() {
       ...app,
       filename,
       id: filename,
+      enabled: composeFiles.includes(filename),
       key,
       runtime,
       title,
@@ -129,3 +175,36 @@ export async function saveApp({ name, compose }: { name: string; compose: string
   )
   await fs.writeFile(fullPath, compose)
 }
+
+export function getStateColor(app: ComposeJSONExtra) {
+  if (app.runtime?.state === 'running') {
+    return 'bg-green-500'
+  }
+  if (app.runtime?.state === 'exited') {
+    return 'bg-red-300'
+  }
+  if (app.runtime?.state === 'removing'  || app.runtime?.state === 'restarting') {
+    return 'bg-yellow-500'
+  }
+  return 'bg-zinc-300'
+}
+
+export function getStateTitle(app: ComposeJSONExtra) {
+  if (app.runtime?.state === 'running') {
+    return 'Running'
+  }
+  if (app.runtime?.state === 'exited' || app.runtime?.state === 'created') {
+    return 'Stopped'
+  }
+  if (app.runtime?.state === 'restarting') {
+    return 'Restarting'
+  }
+  if (app.runtime?.state === 'removing') {
+    return 'Removing'
+  }
+  if (!app.runtime) {
+    return 'Not created'
+  }
+  return 'Not running'
+}
+

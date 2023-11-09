@@ -3,6 +3,7 @@ import { v2 as compose } from 'docker-compose'
 import fs from 'fs/promises'
 import path from 'path'
 import dotenv from 'dotenv'
+import env from "./env.server"
 
 export async function getProject(projectPath: string) {
   const res = await compose.config({ cwd: projectPath, commandOptions: ['--no-interpolate'] })
@@ -75,4 +76,16 @@ function parseService(composeService: any) {
     status: composeService.Status as string,
     service: composeService.Service as string,
   }
+}
+
+export async function getLogs(service: string, configFilename: string) {
+  const res = await compose.logs(service, {
+    cwd: env.configFolder,
+    config: configFilename,
+    commandOptions: ['--no-color', '--tail', '100'],
+  })
+  if (res.exitCode !== 0) {
+    throw new Error(String(res.err || res.out))
+  }
+  return res.out
 }
