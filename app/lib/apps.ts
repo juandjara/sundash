@@ -88,6 +88,7 @@ async function fileExists(filename: string) {
 export async function getApp(filename: string) {
   const configFolder = env.configFolder
   const fullPath = path.join(configFolder, filename)
+  const composeFiles = getEnabledAppFiles()
 
   if (!(await fileExists(fullPath))) {
     throw new Error(`File not found: ${fullPath}`)
@@ -104,23 +105,29 @@ export async function getApp(filename: string) {
   const runtime = state[key]
   const title = getAppTitle(app)
   const logo = getAppLogo(app)
-  return {
+  const appData = {
     ...app,
     filename,
     id: filename,
+    enabled: composeFiles.includes(filename),
     key,
     runtime,
     title,
     logo,
-  } as ComposeJSONExtra
+  } satisfies ComposeJSONExtra
+  return appData as ComposeJSONExtra
+}
+
+function getEnabledAppFiles() {
+  const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
+  const separator = configFolderENV.parsed?.COMPOSE_FILE_SEPARATOR || ':'
+  const composeFiles = (configFolderENV.parsed?.COMPOSE_FILE || 'docker-compose.yml').split(separator)
+  return composeFiles
 }
 
 export async function getApps() {
   const configFolder = env.configFolder
-  const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
-  const separator = configFolderENV.parsed?.COMPOSE_FILE_SEPARATOR || ':'
-  const composeFiles = (configFolderENV.parsed?.COMPOSE_FILE || 'docker-compose.yml').split(separator)
-
+  const composeFiles = getEnabledAppFiles()
   const dir = await fs.readdir(configFolder)
   const ymls = dir.filter((d) => path.extname(d) === '.yml')
   const promises = ymls.map((y) => fs.readFile(path.join(configFolder, y), 'utf-8'))
@@ -133,7 +140,7 @@ export async function getApps() {
     .filter(({ app }) => validateComposeJSON(app))
 
   const state = await getAppsState()
-  return apps.map(({ app, filename }) => {
+  const appsData = apps.map(({ app, filename }) => {
     const key = getServiceKey(app)
     const runtime = state[key]
     const title = getAppTitle(app)
@@ -149,6 +156,7 @@ export async function getApps() {
       logo,
     }
   }) as ComposeJSONExtra[]
+  return appsData as ComposeJSONExtra[]
 }
 
 export function getServiceKey(app: ComposeJSON) {
