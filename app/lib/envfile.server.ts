@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import env from "./env.server"
 import fs from 'fs/promises'
 import path from 'path'
+import { emitter } from "./emitter.server"
 
 export function getComposeFiles() {
   const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
@@ -10,7 +11,7 @@ export function getComposeFiles() {
   return composeFiles
 }
 
-export function addToDotEnv(filename: string) {
+export async function addToDotEnv(filename: string) {
   const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
   const separator = configFolderENV.parsed?.COMPOSE_FILE_SEPARATOR || ':'
   const fileListText = configFolderENV.parsed?.COMPOSE_FILE || ''
@@ -25,10 +26,11 @@ export function addToDotEnv(filename: string) {
     .map(([key, value]) => `${key}=${value}`)
     .join('\n')
 
-  return fs.writeFile(path.join(env.configFolder, '.env'), newDotEnv)
+  await fs.writeFile(path.join(env.configFolder, '.env'), newDotEnv)
+  emitter.emit('message', `Added ${filename} to .env`)
 }
 
-export function removeFromDotEnv(filename: string) {
+export async function removeFromDotEnv(filename: string) {
   const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
   const separator = configFolderENV.parsed?.COMPOSE_FILE_SEPARATOR || ':'
   const fileListText = configFolderENV.parsed?.COMPOSE_FILE || ''
@@ -43,5 +45,6 @@ export function removeFromDotEnv(filename: string) {
     .map(([key, value]) => `${key}=${value}`)
     .join('\n')
 
-  return fs.writeFile(path.join(env.configFolder, '.env'), newDotEnv)
+  await fs.writeFile(path.join(env.configFolder, '.env'), newDotEnv)
+  emitter.emit('message', `Removed ${filename} from .env`)
 }

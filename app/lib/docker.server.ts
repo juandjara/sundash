@@ -3,6 +3,7 @@ import { v2 as compose } from 'docker-compose'
 import path from 'path'
 import env from "./env.server"
 import { emitter } from "./emitter.server"
+import { addToDotEnv, removeFromDotEnv } from './envfile.server'
 
 export async function getPS(psPath: string) {
   const normalizedPath = path.join(psPath)
@@ -105,5 +106,14 @@ export async function handleDockerOperation({ filename, key, op }: DockerCommand
       callback: (chunk) => emitter.emit('message', chunk.toString()),
     })
     return parseComposeResult(res)
+  }
+  if (op === 'enable') {
+    return addToDotEnv(filename)
+  }
+  if (op === 'disable') {
+    return removeFromDotEnv(filename)
+  }
+  if (op === 'delete') {
+    throw new Error('Not implemented')
   }
 }

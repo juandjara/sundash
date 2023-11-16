@@ -73,27 +73,52 @@ export default function AppDetail() {
             src={app.logo}
             className="w-12 h-12 rounded-full bg-gray-100"
           />
-          <p className="text-2xl font-semibold flex-grow">{app.title}</p>
+          <div>
+            <p className="text-2xl font-semibold flex-grow">{app.title}</p>
+            <p className="text-sm text-zinc-500">{app.filename}</p>
+          </div>
           <div className="flex-grow"></div>
           <div className="flex flex-wrap justify-start gap-2">
             <Link className="opacity-50 pointer-events-none" to={`/apps/${app.filename}/edit`}>
-              <button type="button" className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}>
+              <button
+                aria-disabled={busy}
+                type="button"
+                className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
+              >
                 <PencilIcon className="w-5 h-5" />
                 <p>Edit</p>
               </button>
             </Link>
-            {app.enabled ? (
-              <button name="op" value="disable" className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}>
-                <MinusCircleIcon className="w-5 h-5" />
-                <p>Disable</p>
-              </button>
-            ) : (
-              <button name="op" value="enable" className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}>
-                <PlusCircleIcon className="w-5 h-5" />
-                <p>Enable</p>
-              </button>
-            )}
-            <button name="op" value="delete" className={clsx(buttonCN.normal, buttonCN.delete, 'border-2 border-red-200', buttonCN.iconLeft)}>
+            {app.filename !== 'docker-compose.yml'
+              ? (
+                app.enabled ? (
+                  <button
+                    aria-disabled={busy}
+                    name="op"
+                    value="disable"
+                    className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
+                  >
+                    <MinusCircleIcon className="w-5 h-5" />
+                    <p>Disable</p>
+                  </button>
+                ) : (
+                  <button
+                    aria-disabled={busy}
+                    name="op"
+                    value="enable"
+                    className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
+                  >
+                    <PlusCircleIcon className="w-5 h-5" />
+                    <p>Enable</p>
+                  </button>
+                )
+              ) : null}
+            <button
+              aria-disabled={busy}
+              name="op"
+              value="delete"
+              className={clsx(buttonCN.normal, buttonCN.delete, 'border-2 border-red-200', buttonCN.iconLeft)}
+            >
               <TrashIcon className="w-5 h-5" />
               <p>Delete</p>
             </button>
