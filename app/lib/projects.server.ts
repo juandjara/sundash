@@ -100,12 +100,52 @@ function parseComposeResult(res: IDockerComposeResult) {
 type DockerCommand = {
   filename: string
   key: string
-  op: 'enable' | 'disable' | 'delete' | 'start' | 'stop' | 'restart' | 'kill' | 'up' | 'down' | 'pull'
+  op: 'enable' | 'disable' | 'delete' | 'stop' | 'restart' | 'kill' | 'up' | 'down' | 'pull'
 }
 
 export async function handleDockerOperation({ filename, key, op }: DockerCommand) {
   if (op === 'restart') {
     const res = await compose.restartOne(key, {
+      cwd: env.configFolder,
+      config: filename,
+      callback: (chunk) => emitter.emit('message', chunk.toString()),
+    })
+    return parseComposeResult(res)
+  }
+  if (op === 'up') {
+    const res = await compose.upOne(key, {
+      cwd: env.configFolder,
+      config: filename,
+      callback: (chunk) => emitter.emit('message', chunk.toString()),
+    })
+    return parseComposeResult(res)
+  }
+  if (op === 'down') {
+    const res = await compose.down({
+      cwd: env.configFolder,
+      config: filename,
+      callback: (chunk) => emitter.emit('message', chunk.toString()),
+    })
+    return parseComposeResult(res)
+  }
+  if (op === 'stop') {
+    const res = await compose.stopOne(key, {
+      cwd: env.configFolder,
+      config: filename,
+      callback: (chunk) => emitter.emit('message', chunk.toString()),
+    })
+    return parseComposeResult(res)
+  }
+  if (op === 'kill') {
+    const res = await compose.kill({
+      cwd: env.configFolder,
+      config: filename,
+      callback: (chunk) => emitter.emit('message', chunk.toString()),
+    })
+    return parseComposeResult(res)
+  }
+  if (op === 'pull') {
+    const res = await compose.pullOne(key, {
       cwd: env.configFolder,
       config: filename,
       callback: (chunk) => emitter.emit('message', chunk.toString()),

@@ -1,5 +1,5 @@
 import { ArrowDownCircleIcon, ArrowLeftIcon } from "@heroicons/react/20/solid"
-import { PencilIcon, MinusCircleIcon, PlusCircleIcon, ArrowDownTrayIcon, ArrowPathIcon, ArrowUpTrayIcon, CloudArrowDownIcon, PlayIcon, StopIcon, TrashIcon } from "@heroicons/react/24/outline"
+import { PencilIcon, MinusCircleIcon, PlusCircleIcon, ArrowDownTrayIcon, ArrowPathIcon, ArrowUpTrayIcon, CloudArrowDownIcon, StopIcon, TrashIcon } from "@heroicons/react/24/outline"
 import { json, type ActionArgs, type LoaderArgs } from "@remix-run/node"
 import { Form, Link, useLoaderData, useRevalidator } from "@remix-run/react"
 import clsx from "clsx"
@@ -51,13 +51,7 @@ export default function AppDetail() {
   const { app, logs } = useLoaderData() as { app: ComposeJSONExtra; logs: string }
   const revalidator = useRevalidator()
   const events = useEventLog()
-  const logsRef = useRef<HTMLPreElement>(null)
 
-  function scrollToBottom() {
-    if (logsRef.current) {
-      logsRef.current.scrollTop = logsRef.current.scrollHeight
-    }
-  }
 
   if (!app) {
     return null
@@ -110,22 +104,6 @@ export default function AppDetail() {
           { 'opacity-40 pointer-events-none': !app.enabled },
           'flex flex-wrap justify-end gap-2 my-6'
         )}>
-          <button name="op" value="start" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
-            <PlayIcon className="w-5 h-5" />
-            <p>Start</p>
-          </button>
-          <button name="op" value="stop" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
-            <StopIcon className="w-5 h-5" />
-            <p>Stop</p>
-          </button>
-          <button name="op" value="restart" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
-            <ArrowPathIcon className="w-5 h-5" />
-            <p>Restart</p>
-          </button>
-          <button name="op" value="kill" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
-            <TrashIcon className="w-5 h-5" />
-            <p>Kill</p>
-          </button>
           <button name="op" value="up" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
             <ArrowUpTrayIcon className="w-5 h-5" />
             <p>Up</p>
@@ -134,17 +112,27 @@ export default function AppDetail() {
             <ArrowDownTrayIcon className="w-5 h-5" />
             <p>Down</p>
           </button>
+          <button name="op" value="restart" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+            <ArrowPathIcon className="w-5 h-5" />
+            <p>Restart</p>
+          </button>
+          <button name="op" value="stop" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+            <StopIcon className="w-5 h-5" />
+            <p>Stop</p>
+          </button>
+          <button name="op" value="kill" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+            <TrashIcon className="w-5 h-5" />
+            <p>Kill</p>
+          </button>
           <button name="op" value="pull" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
             <CloudArrowDownIcon className="w-5 h-5" />
             <p>Pull</p>
           </button>
         </div>
       </Form>
-      <div className="mb-4">
-        {events.length ? (
-          <pre className="overflow-auto max-h-[500px] p-3 bg-zinc-100 rounded-md">{events.join('\n')}</pre>
-        ) : null}
-      </div>
+      {events.length ? (
+        <LogDisplay className="mb-4" text={events.join('\n')} />
+      ) : null}
       <hr />
       <div className="my-4">
         <div className="flex flex-wrap items-start gap-6">
@@ -167,7 +155,7 @@ export default function AppDetail() {
             <p>{app.runtime?.created}</p>
           </div>
         </div>
-        <div className="mt-4 relative">
+        <div className="mt-4">
           <div className="flex items-end justify-between mb-2">
             <p className="text-sm text-zinc-500">Logs</p>
             <button
@@ -179,16 +167,32 @@ export default function AppDetail() {
               <p>Reload</p>
             </button>
           </div>
-          <pre ref={logsRef} className="overflow-auto max-h-[500px] p-3 bg-zinc-100 rounded-md">{logs}</pre>
-          <button
-            title='Scroll to bottom'
-            onClick={scrollToBottom}
-            className={clsx('absolute bottom-2 right-2 hover:bg-white', buttonCN.normal, buttonCN.icon)}
-          >
-            <ArrowDownCircleIcon className="w-6 h-6" />
-          </button>
+          <LogDisplay text={logs} />
         </div>
       </div>
     </Layout>
+  )
+}
+
+function LogDisplay({ text, className = '' }: { text: string; className?: string }) {
+  const logsRef = useRef<HTMLPreElement>(null)
+
+  function scrollToBottom() {
+    if (logsRef.current) {
+      logsRef.current.scrollTop = logsRef.current.scrollHeight
+    }
+  }
+
+  return (
+    <div className={clsx(className, 'relative')}>
+      <pre ref={logsRef} className="overflow-auto max-h-[500px] p-3 bg-zinc-100 rounded-md">{text}</pre>
+      <button
+        title='Scroll to bottom'
+        onClick={scrollToBottom}
+        className={clsx('absolute bottom-2 right-2 hover:bg-white', buttonCN.normal, buttonCN.icon)}
+      >
+        <ArrowDownCircleIcon className="w-6 h-6" />
+      </button>
+    </div>
   )
 }
