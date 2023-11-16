@@ -1,9 +1,11 @@
 import { withRedis } from "~/lib/db.server"
+import type { IDockerComposeResult} from 'docker-compose'
 import { v2 as compose } from 'docker-compose'
 import fs from 'fs/promises'
 import path from 'path'
 import dotenv from 'dotenv'
 import env from "./env.server"
+import { emitter } from "./emitter.server"
 
 export async function getProject(projectPath: string) {
   const res = await compose.config({ cwd: projectPath, commandOptions: ['--no-interpolate'] })
@@ -84,8 +86,30 @@ export async function getLogs(service: string, configFilename: string) {
     config: configFilename,
     commandOptions: ['--no-color', '--tail', '100'],
   })
+  const msg = parseComposeResult(res)
+  return msg
+}
+
+function parseComposeResult(res: IDockerComposeResult) {
   if (res.exitCode !== 0) {
     throw new Error(String(res.err || res.out))
   }
-  return res.out
+  return res.out || res.err || ''
+}
+
+type DockerCommand = {
+  filename: string
+  key: string
+  op: 'enable' | 'disable' | 'delete' | 'start' | 'stop' | 'restart' | 'kill' | 'up' | 'down' | 'pull'
+}
+
+export async function handleDockerOperation({ filename, key, op }: DockerCommand) {
+  if (op === 'restart') {
+    const res = await compose.restartOne(key, {
+      cwd: env.configFolder,
+      config: filename,
+      callback: (chunk) => emitter.emit('message', chunk.toString()),
+    })
+    return parseComposeResult(res)
+  }
 }
