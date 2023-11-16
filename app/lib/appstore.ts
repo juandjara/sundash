@@ -168,7 +168,7 @@ export function editComposeForProxy(json: any, params: {
   
     const fullUrl = new URL(url.startsWith('http') ? url : `http://${url}`)
     fullUrl.protocol = 'http'
-    json.services[key].labels['caddy'] = fullUrl.toString()
+    json.services[key].labels['caddy'] = fullUrl.toString().replace(/\/$/, '')
 
     if (hasAuth) {
       json.services[key].labels['caddy.authorize'] = 'with auth_policy'

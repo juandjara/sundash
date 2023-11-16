@@ -88,7 +88,8 @@ export default function TemplateEditor() {
       service,
     })
 
-    setText(YAML.stringify(withProxyConfig))
+    const newYaml = YAML.stringify(withProxyConfig)
+    setText(newYaml.replace(/\n(\w)/g, '\n\n$1'))
   }
 
   if (!app) {
@@ -172,7 +173,6 @@ export default function TemplateEditor() {
                   name="hasAuth"
                   id="hasAuth"
                   className="mr-2"
-                  defaultChecked
                 />
                 <span>Exposed URL requires authentication</span>
               </label>
