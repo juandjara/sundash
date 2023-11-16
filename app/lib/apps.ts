@@ -2,9 +2,9 @@ import env from "./env.server"
 import fs from 'fs/promises'
 import path from 'path'
 import YAML from 'yaml'
-import type { PsService} from "./projects.server"
-import { getPS } from "./projects.server"
-import dotenv from 'dotenv'
+import type { PsService} from "./docker.server"
+import { getPS } from "./docker.server"
+import { getComposeFiles } from "./envfile.server"
 
 type ComposeJSON = {
   version?: string
@@ -88,7 +88,7 @@ async function fileExists(filename: string) {
 export async function getApp(filename: string) {
   const configFolder = env.configFolder
   const fullPath = path.join(configFolder, filename)
-  const composeFiles = getEnabledAppFiles()
+  const composeFiles = getComposeFiles()
 
   if (!(await fileExists(fullPath))) {
     throw new Error(`File not found: ${fullPath}`)
@@ -118,16 +118,9 @@ export async function getApp(filename: string) {
   return appData as ComposeJSONExtra
 }
 
-function getEnabledAppFiles() {
-  const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
-  const separator = configFolderENV.parsed?.COMPOSE_FILE_SEPARATOR || ':'
-  const composeFiles = (configFolderENV.parsed?.COMPOSE_FILE || 'docker-compose.yml').split(separator)
-  return composeFiles
-}
-
 export async function getApps() {
   const configFolder = env.configFolder
-  const composeFiles = getEnabledAppFiles()
+  const composeFiles = getComposeFiles()
   const dir = await fs.readdir(configFolder)
   const ymls = dir.filter((d) => path.extname(d) === '.yml')
   const promises = ymls.map((y) => fs.readFile(path.join(configFolder, y), 'utf-8'))
