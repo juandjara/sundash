@@ -50,7 +50,7 @@ export default function TemplateDetail({ template }: { template: Template }) {
         <p
           className="max-w-prose text-zinc-500 text-sm [&_a]:underline [&>p+p]:mt-2"
           dangerouslySetInnerHTML={{ __html: markdowns.note }}></p>
-        <Link to={`/edit?${params.toString()}`}>
+        <Link to={`/edit?${params.toString()}&source=appstore`}>
           <button className={clsx('mt-2 mb-12', buttonCN.primary, buttonCN.big, buttonCN.iconLeft)}>
             <PlusCircleIcon className="w-6 h-6" />
             <p>Edit and Install</p>

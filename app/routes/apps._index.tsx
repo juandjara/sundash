@@ -30,10 +30,12 @@ export default function Apps() {
             {numRunningApps} running / {numCreatedApps} created / {enabledApps.length} total
           </small>
         </h2>
-        <button className={clsx(buttonCN.normal, buttonCN.primary, buttonCN.iconLeft)}>
-          <PlusIcon className="w-6 h-6" />
-          <p>New app</p>
-        </button>
+        <Link to='/edit?source=new'>
+          <button className={clsx(buttonCN.normal, buttonCN.primary, buttonCN.iconLeft)}>
+            <PlusIcon className="w-6 h-6" />
+            <p>New app</p>
+          </button>
+        </Link>
       </div>
       {apps.length === 0 && (
         <p className="text-center text-lg mt-4">

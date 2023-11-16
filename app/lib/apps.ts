@@ -59,6 +59,7 @@ export type ComposeJSONExtra = ComposeJSON & {
   enabled: boolean
   runtime?: PsService
   title: string
+  name: string
   logo: string
 }
 
@@ -76,28 +77,11 @@ export function validateComposeJSON(app: ComposeJSON) {
   return Boolean(app && app.version && app.services && Object.keys(app.services).length > 0)
 }
 
-async function fileExists(filename: string) {
-  try {
-    await fs.access(filename, fs.constants.R_OK) // check file exists and is readable
-    return true
-  } catch (err) {
-    return false
-  }
-}
-
-export async function getApp(filename: string) {
-  const configFolder = env.configFolder
-  const fullPath = path.join(configFolder, filename)
+export async function getApp(filename: string, yaml: string) {
   const composeFiles = getComposeFiles()
-
-  if (!(await fileExists(fullPath))) {
-    throw new Error(`File not found: ${fullPath}`)
-  }
-
-  const text = await fs.readFile(fullPath, 'utf-8')
-  const app = YAML.parse(text) as ComposeJSON
+  const app = YAML.parse(yaml) as ComposeJSON
   if (!validateComposeJSON(app)) {
-    throw new Error(`Invalid compose file: ${fullPath}`)
+    throw new Error(`Invalid YAML: \n${yaml}`)
   }
 
   const state = await getAppsState()
@@ -112,6 +96,7 @@ export async function getApp(filename: string) {
     enabled: composeFiles.includes(filename),
     key,
     runtime,
+    name: path.basename(filename, '.yml'),
     title,
     logo,
   } satisfies ComposeJSONExtra
@@ -181,8 +166,8 @@ export function getStateColor(app: ComposeJSONExtra) {
   if (app.runtime?.state === 'running') {
     return 'bg-green-500'
   }
-  if (app.runtime?.state === 'exited') {
-    return 'bg-red-300'
+  if (app.runtime?.state === 'exited' || app.runtime?.state === 'created') {
+    return 'bg-red-500'
   }
   if (app.runtime?.state === 'removing'  || app.runtime?.state === 'restarting') {
     return 'bg-yellow-500'

@@ -4,6 +4,7 @@ import path from 'path'
 import env from "./env.server"
 import { emitter } from "./emitter.server"
 import { addToDotEnv, removeFromDotEnv } from './envfile.server'
+import fs from 'fs/promises'
 
 export async function getPS(psPath: string) {
   const normalizedPath = path.join(psPath)
@@ -47,7 +48,7 @@ export async function getLogs(service: string, configFilename: string) {
 
 function parseComposeResult(res: IDockerComposeResult) {
   if (res.exitCode !== 0) {
-    throw new Error(String(res.err || res.out))
+    throw new Error(String(res.err || res.out || 'Unknown error from docker-compose'))
   }
   return res.out || res.err || ''
 }
@@ -59,61 +60,86 @@ type DockerCommand = {
 }
 
 export async function handleDockerOperation({ filename, key, op }: DockerCommand) {
-  if (op === 'restart') {
-    const res = await compose.restartOne(key, {
-      cwd: env.configFolder,
-      config: filename,
-      callback: (chunk) => emitter.emit('message', chunk.toString()),
-    })
-    return parseComposeResult(res)
+  try {
+    if (op === 'restart') {
+      const res = await compose.restartOne(key, {
+        cwd: env.configFolder,
+        config: filename,
+        callback: (chunk) => emitter.emit('message', chunk.toString()),
+      })
+      return parseComposeResult(res)
+    }
+    if (op === 'up') {
+      const res = await compose.upOne(key, {
+        cwd: env.configFolder,
+        config: filename,
+        callback: (chunk) => emitter.emit('message', chunk.toString()),
+      })
+      return parseComposeResult(res)
+    }
+    if (op === 'down') {
+      const res = await compose.down({
+        cwd: env.configFolder,
+        config: filename,
+        callback: (chunk) => emitter.emit('message', chunk.toString()),
+      })
+      return parseComposeResult(res)
+    }
+    if (op === 'stop') {
+      const res = await compose.stopOne(key, {
+        cwd: env.configFolder,
+        config: filename,
+        callback: (chunk) => emitter.emit('message', chunk.toString()),
+      })
+      return parseComposeResult(res)
+    }
+    if (op === 'kill') {
+      const res = await compose.kill({
+        cwd: env.configFolder,
+        config: filename,
+        callback: (chunk) => emitter.emit('message', chunk.toString()),
+      })
+      return parseComposeResult(res)
+    }
+    if (op === 'pull') {
+      const res = await compose.pullOne(key, {
+        cwd: env.configFolder,
+        config: filename,
+        callback: (chunk) => emitter.emit('message', chunk.toString()),
+      })
+      return parseComposeResult(res)
+    }
+    if (op === 'enable') {
+      return addToDotEnv(filename)
+    }
+    if (op === 'disable') {
+      return removeFromDotEnv(filename)
+    }
+    if (op === 'delete') {
+      throw new Error('Not implemented')
+    }
+  } catch (err) {
+    return parseComposeResult(err as any)
   }
-  if (op === 'up') {
-    const res = await compose.upOne(key, {
-      cwd: env.configFolder,
-      config: filename,
-      callback: (chunk) => emitter.emit('message', chunk.toString()),
-    })
-    return parseComposeResult(res)
+}
+
+async function fileExists(filename: string) {
+  try {
+    await fs.access(filename, fs.constants.R_OK) // check file exists and is readable
+    return true
+  } catch (err) {
+    return false
   }
-  if (op === 'down') {
-    const res = await compose.down({
-      cwd: env.configFolder,
-      config: filename,
-      callback: (chunk) => emitter.emit('message', chunk.toString()),
-    })
-    return parseComposeResult(res)
+}
+
+export async function readComposeFile(filename: string) {
+  const configFolder = env.configFolder
+  const fullPath = path.join(configFolder, filename)
+
+  if (!(await fileExists(fullPath))) {
+    throw new Error(`File not found: ${fullPath}`)
   }
-  if (op === 'stop') {
-    const res = await compose.stopOne(key, {
-      cwd: env.configFolder,
-      config: filename,
-      callback: (chunk) => emitter.emit('message', chunk.toString()),
-    })
-    return parseComposeResult(res)
-  }
-  if (op === 'kill') {
-    const res = await compose.kill({
-      cwd: env.configFolder,
-      config: filename,
-      callback: (chunk) => emitter.emit('message', chunk.toString()),
-    })
-    return parseComposeResult(res)
-  }
-  if (op === 'pull') {
-    const res = await compose.pullOne(key, {
-      cwd: env.configFolder,
-      config: filename,
-      callback: (chunk) => emitter.emit('message', chunk.toString()),
-    })
-    return parseComposeResult(res)
-  }
-  if (op === 'enable') {
-    return addToDotEnv(filename)
-  }
-  if (op === 'disable') {
-    return removeFromDotEnv(filename)
-  }
-  if (op === 'delete') {
-    throw new Error('Not implemented')
-  }
+
+  const text = await fs.readFile(fullPath, 'utf-8')
+  return text
 }

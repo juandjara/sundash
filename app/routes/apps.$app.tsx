@@ -1,21 +1,22 @@
 import { ArrowDownCircleIcon, ArrowLeftIcon } from "@heroicons/react/20/solid"
 import { PencilIcon, MinusCircleIcon, PlusCircleIcon, ArrowDownTrayIcon, ArrowPathIcon, ArrowUpTrayIcon, CloudArrowDownIcon, StopIcon, TrashIcon } from "@heroicons/react/24/outline"
 import { json, type ActionArgs, type LoaderArgs } from "@remix-run/node"
-import { Form, Link, useLoaderData, useNavigation, useRevalidator } from "@remix-run/react"
+import { Form, Link, useActionData, useLoaderData, useNavigation, useRevalidator } from "@remix-run/react"
 import clsx from "clsx"
 import { useEffect, useRef, useState } from "react"
 import { useEventSource } from "remix-utils"
 import Logo from "~/components/Logo"
 import Layout from "~/components/layout"
 import type { ComposeJSONExtra} from "~/lib/apps"
-import { getApp, getStateTitle } from "~/lib/apps"
-import { getLogs, handleDockerOperation } from "~/lib/docker.server"
+import { getApp, getStateColor, getStateTitle } from "~/lib/apps"
+import { getLogs, handleDockerOperation, readComposeFile } from "~/lib/docker.server"
 import { buttonCN } from "~/lib/styles"
 
 export async function loader({ params }: LoaderArgs) {
   const filename = params.app!
   try {
-    const app = await getApp(filename)
+    const yaml = await readComposeFile(filename)
+    const app = await getApp(filename, yaml)
     const logs = await getLogs(app.key, app.filename)
     return { app, logs }
   } catch (err) {
@@ -26,13 +27,18 @@ export async function loader({ params }: LoaderArgs) {
 export async function action({ request }: ActionArgs) {
   const fd = await request.formData()
   const op = fd.get('op') as any
-  const res = await handleDockerOperation({
-    op,
-    key: fd.get('key') as string,
-    filename: fd.get('filename') as string,
-  })
-
-  return json({ msg: res })
+  try {
+    const res = await handleDockerOperation({
+      op,
+      key: fd.get('key') as string,
+      filename: fd.get('filename') as string,
+    })
+  
+    return json({ msg: res })
+  } catch (err) {
+    const msg = String((err as Error).message)
+    return json({ error: msg })
+  }
 }
 
 function useEventLog() {
@@ -52,6 +58,7 @@ export default function AppDetail() {
   const events = useEventLog()
   const transition = useNavigation()
   const busy = transition.state !== 'idle'
+  const actionData = useActionData()
 
   if (!app) {
     return null
@@ -79,9 +86,8 @@ export default function AppDetail() {
           </div>
           <div className="flex-grow"></div>
           <div className="flex flex-wrap justify-start gap-2">
-            <Link className="opacity-50 pointer-events-none" to={`/apps/${app.filename}/edit`}>
+            <Link to={`/edit?source=file&filename=${app.filename}`}>
               <button
-                aria-disabled={busy}
                 type="button"
                 className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
               >
@@ -155,7 +161,11 @@ export default function AppDetail() {
           </button>
         </div>
       </Form>
-      <LogDisplay className="mb-4" text={events.join('\n')} />
+      {actionData?.error ? (
+        <LogDisplay className="mb-4 text-red-800 bg-red-100" text={actionData.error} />
+      ) : (
+        <LogDisplay className="mb-4" text={events.join('\n')} />
+      )}
       <hr />
       <div className="my-4">
         <div className="flex flex-wrap items-start gap-6">
@@ -163,7 +173,13 @@ export default function AppDetail() {
             <p>
               <small className="text-gray-500">State: </small>
             </p>
-            <p>{getStateTitle(app)}</p>
+            <div className="flex items-center gap-2">
+              <div className={clsx(
+                getStateColor(app),
+                'w-3 h-3 rounded-full'
+              )}></div>
+              <p>{getStateTitle(app)}</p>
+            </div>
           </div>
           {app.runtime?.status ? (
             <div>
@@ -214,16 +230,20 @@ function LogDisplay({ text, className = '' }: { text: string; className?: string
     return null
   }
 
+  const numLines = text.split('\n').length
+
   return (
     <div className={clsx(className, 'relative')}>
-      <pre ref={logsRef} className="overflow-auto max-h-[500px] p-3 bg-zinc-100 rounded-md">{text}</pre>
-      <button
-        title='Scroll to bottom'
-        onClick={scrollToBottom}
-        className={clsx('absolute bottom-2 right-2 hover:bg-white', buttonCN.normal, buttonCN.icon)}
-      >
-        <ArrowDownCircleIcon className="w-6 h-6" />
-      </button>
+      <pre ref={logsRef} className="overflow-auto max-h-[500px] p-3 bg-zinc-100 rounded-md">{text.trim()}</pre>
+      {numLines > 10 ? (
+        <button
+          title='Scroll to bottom'
+          onClick={scrollToBottom}
+          className={clsx('absolute bottom-2 right-2 hover:bg-white', buttonCN.normal, buttonCN.icon)}
+        >
+          <ArrowDownCircleIcon className="w-6 h-6" />
+        </button>
+      ) : null}
     </div>
   )
 }

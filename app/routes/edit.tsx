@@ -1,28 +1,66 @@
-import Layout from "~/components/layout"
-import { Form, Link, useLoaderData, useNavigate, useNavigation } from "@remix-run/react"
-import { redirect, type ActionArgs, type LoaderArgs } from "@remix-run/node"
-import { editComposeForProxy, editComposeForSundash, getComposeTemplate, getTemplate } from "~/lib/appstore"
-import { buttonCN, inputCN } from "~/lib/styles"
-import clsx from "clsx"
 import { ArrowLeftIcon } from "@heroicons/react/20/solid"
-import YAML from 'yaml'
+import { redirect, type ActionArgs, type LoaderArgs } from "@remix-run/node"
+import { Form, Link, useLoaderData, useNavigate, useNavigation } from "@remix-run/react"
+import clsx from "clsx"
 import { useEffect, useMemo, useRef, useState } from "react"
+import YAML from 'yaml'
 import Logo from "~/components/Logo"
-import { saveApp } from "~/lib/apps"
+import Layout from "~/components/layout"
+import { getApp, saveApp } from "~/lib/apps"
+import { getComposeTemplate, getTemplate } from "~/lib/appstore"
+import { readComposeFile } from "~/lib/docker.server"
+import { editComposeForProxy, editComposeForSundash } from "~/lib/editor"
+import { buttonCN, inputCN } from "~/lib/styles"
+
+const blankApp = {
+  name: 'app',
+  title: 'new app',
+  logo: '',
+  description: '',
+  category: '',
+}
+
+const blankYaml = `version: '3'
+services:
+  app:
+    restart: unless-stopped
+    ports:
+    - 80:80
+`
 
 export async function loader({ request }: LoaderArgs) {
-  const query = new URL(request.url).searchParams.get('q') || ''
-  const category = new URL(request.url).searchParams.get('category') || ''
-  const open = Number(new URL(request.url).searchParams.get('open') || '-1')
-  const app = await getTemplate({ query, category, open })
-
-  if (!app) {
-    throw new Response('App not found', { status: 404, statusText: 'Not found' })
+  const source = new URL(request.url).searchParams.get('source') || '' as 'appstore' | 'file' | 'new'
+  if (source === 'appstore') {
+    const query = new URL(request.url).searchParams.get('q') || ''
+    const category = new URL(request.url).searchParams.get('category') || ''
+    const open = Number(new URL(request.url).searchParams.get('open') || '-1')
+    const app = await getTemplate({ query, category, open })
+  
+    if (!app) {
+      throw new Response('App not found', { status: 404, statusText: 'Not found' })
+    }
+  
+    return {
+      app,
+      composeYaml: await getComposeTemplate(app),
+      source
+    }
+  }
+  if (source === 'file') {
+    const filename = new URL(request.url).searchParams.get('filename') || ''
+    const yaml = await readComposeFile(filename)
+    const app = await getApp(filename, yaml)
+    return {
+      app,
+      composeYaml: yaml,
+      source
+    }
   }
 
   return {
-    app,
-    composeYaml: await getComposeTemplate(app)
+    app: blankApp,
+    composeYaml: blankYaml,
+    source
   }
 }
 
@@ -35,10 +73,10 @@ export async function action({ request }: ActionArgs) {
 }
 
 export default function TemplateEditor() {
-  const { app, composeYaml } = useLoaderData<typeof loader>()
+  const { app, composeYaml, source } = useLoaderData<typeof loader>()
   const navigate = useNavigate()
   const [text, setText] = useState(composeYaml)
-  const [proxyEnabled, setProxyEnabled] = useState(true)
+  const [proxyEnabled, setProxyEnabled] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const [logo, setLogo] = useState(app.logo)
   const composeJSON = useMemo(() => YAML.parse(text), [text])
@@ -109,7 +147,9 @@ export default function TemplateEditor() {
           <ArrowLeftIcon className='w-5 h-5' />
         </button>
         <div className="mb-6">
-          <h2 className="text-3xl font-bold mb-1">Install {app.title || app.name}</h2>
+          <h2 className="text-3xl font-bold mb-1">
+            {source === 'file' ? 'Edit' : 'Install'}{' '}{app.title || app.name}
+          </h2>
           <p className="text-xl">Edit this docker compose template and deploy it on your server.</p>
         </div>
       </div>
@@ -150,7 +190,7 @@ export default function TemplateEditor() {
               className="w-16 h-16 block object-contain rounded-full shadow shadow-pink-200 p-0.5"
             />
           </div>
-          <p className="mt-8 text-lg">Exposed URL configuration</p>
+          <p className="mt-8 text-lg">Expose configuration</p>
           <hr className="mt-2 mb-6" />
           <div className="mb-6">
             <label className="text-zinc-500 flex items-center" htmlFor="proxyEnabled">
@@ -162,7 +202,7 @@ export default function TemplateEditor() {
                 checked={proxyEnabled}
                 onChange={(e) => setProxyEnabled(e.target.checked)}
               />
-              <span>Expose URL enabled</span>
+              <span>Expose App</span>
             </label>
           </div>
           <fieldset aria-disabled={!proxyEnabled} className="aria-disabled:opacity-50 aria-disabled:pointer-events-none">
@@ -174,7 +214,7 @@ export default function TemplateEditor() {
                   id="hasAuth"
                   className="mr-2"
                 />
-                <span>Exposed URL requires authentication</span>
+                <span>Exposed App requires authentication</span>
               </label>
             </div>
             <div className="mb-6">
@@ -236,14 +276,26 @@ export default function TemplateEditor() {
               id="compose"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              autoCapitalize="off"
               autoComplete="off"
               spellCheck="false"
             />
           </div>
           <div className="flex items-center gap-2">
-            <button aria-disabled={busy} type="submit" className={clsx(buttonCN.normal, buttonCN.primary)}>Deploy</button>
-            <button aria-disabled={busy} type="button" onClick={resetForm} className={clsx(buttonCN.normal, buttonCN.transparent)}>Reset</button>
+            <button
+              type="submit"
+              aria-disabled={busy}
+              className={clsx(buttonCN.normal, buttonCN.primary)}
+            >
+              {source === 'file' ? 'Save' : 'Deploy'}
+            </button>
+            <button
+              type="button"
+              aria-disabled={busy}
+              onClick={resetForm}
+              className={clsx(buttonCN.normal, buttonCN.transparent)}
+            >
+              Reset
+            </button>
             <div className="flex-grow"></div>
             <button type="button" onClick={() => navigate(-1)} className={clsx(buttonCN.normal, buttonCN.delete)}>Cancel</button>
           </div>
