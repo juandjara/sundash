@@ -81,14 +81,24 @@ export async function action({ request }: ActionArgs) {
   return redirect(`/apps/${fullName}`)
 }
 
+function tryParseYaml(yaml: string) {
+  try {
+    return YAML.parse(yaml) as ComposeJSON
+  } catch (e) {
+    return {
+      services: {}
+    }
+  }
+}
+
 export default function TemplateEditor() {
   const { app, composeYaml, source, networkExists } = useLoaderData<typeof loader>()
   const navigate = useNavigate()
   const [text, setText] = useState(composeYaml)
-  const composeJSON = useMemo(() => YAML.parse(text) as ComposeJSON, [text])
+  const composeJSON = useMemo(() => tryParseYaml(text), [text])
   const formRef = useRef<HTMLFormElement>(null)
   const [logo, setLogo] = useState(app.logo)
-  const [proxyEnabled, setProxyEnabled] = useState(getDefaults().proxyEnabled)
+  const [proxyEnabled, setProxyEnabled] = useState(() => getDefaults().proxyEnabled)
   const transition = useNavigation()
   const busy = transition.state !== 'idle'
 
@@ -109,7 +119,7 @@ export default function TemplateEditor() {
 
   function getDefaults() {
     const key = Object.keys(composeJSON.services)[0]
-    const service = composeJSON.services[key]
+    const service = composeJSON.services[key] || {}
     const portParts = service.ports?.[0] && service.ports[0].split(':')
     const port = portParts && Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', ''))
     const url = `${app.name}.example.com`
