@@ -1,14 +1,15 @@
 import { ArrowLeftIcon } from "@heroicons/react/20/solid"
 import { redirect, type ActionArgs, type LoaderArgs } from "@remix-run/node"
-import { Form, Link, useLoaderData, useNavigate, useNavigation } from "@remix-run/react"
+import { Form, Link, useFetcher, useLoaderData, useNavigate, useNavigation } from "@remix-run/react"
 import clsx from "clsx"
 import { useEffect, useMemo, useRef, useState } from "react"
 import YAML from 'yaml'
 import Logo from "~/components/Logo"
 import Layout from "~/components/layout"
+import type { ComposeJSON} from "~/lib/apps"
 import { getApp, saveApp } from "~/lib/apps"
 import { getComposeTemplate, getTemplate } from "~/lib/appstore"
-import { readComposeFile } from "~/lib/docker.server"
+import { checkNetworkExists, readComposeFile } from "~/lib/docker.server"
 import { editComposeForProxy, editComposeForSundash } from "~/lib/editor"
 import { buttonCN, inputCN } from "~/lib/styles"
 
@@ -28,8 +29,12 @@ services:
     - 80:80
 `
 
+const PROXY_NETWORK = 'web'
+
 export async function loader({ request }: LoaderArgs) {
   const source = new URL(request.url).searchParams.get('source') || '' as 'appstore' | 'file' | 'new'
+  const networkExists = await checkNetworkExists(PROXY_NETWORK)
+
   if (source === 'appstore') {
     const query = new URL(request.url).searchParams.get('q') || ''
     const category = new URL(request.url).searchParams.get('category') || ''
@@ -43,7 +48,8 @@ export async function loader({ request }: LoaderArgs) {
     return {
       app,
       composeYaml: await getComposeTemplate(app),
-      source
+      source,
+      networkExists
     }
   }
   if (source === 'file') {
@@ -53,14 +59,16 @@ export async function loader({ request }: LoaderArgs) {
     return {
       app,
       composeYaml: yaml,
-      source
+      source,
+      networkExists
     }
   }
 
   return {
     app: blankApp,
     composeYaml: blankYaml,
-    source
+    source,
+    networkExists
   }
 }
 
@@ -68,18 +76,19 @@ export async function action({ request }: ActionArgs) {
   const fd = await request.formData()
   const name = fd.get('name') as string
   const compose = fd.get('compose') as string
-  await saveApp({ name, compose })
-  return redirect('/apps')
+  const fullName = name.endsWith('.yml') ? name : `${name}.yml`
+  await saveApp({ name: fullName, compose })
+  return redirect(`/apps/${fullName}`)
 }
 
 export default function TemplateEditor() {
-  const { app, composeYaml, source } = useLoaderData<typeof loader>()
+  const { app, composeYaml, source, networkExists } = useLoaderData<typeof loader>()
   const navigate = useNavigate()
   const [text, setText] = useState(composeYaml)
-  const [proxyEnabled, setProxyEnabled] = useState(false)
+  const composeJSON = useMemo(() => YAML.parse(text) as ComposeJSON, [text])
   const formRef = useRef<HTMLFormElement>(null)
   const [logo, setLogo] = useState(app.logo)
-  const composeJSON = useMemo(() => YAML.parse(text), [text])
+  const [proxyEnabled, setProxyEnabled] = useState(getDefaults().proxyEnabled)
   const transition = useNavigation()
   const busy = transition.state !== 'idle'
 
@@ -104,7 +113,9 @@ export default function TemplateEditor() {
     const portParts = service.ports?.[0] && service.ports[0].split(':')
     const port = portParts && Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', ''))
     const url = `${app.name}.example.com`
-    return { port, url, service: key }
+    const proxyEnabled = !!service.labels?.['caddy']
+    const authEnabled = !!service.labels?.['caddy.authorize']
+    return { port, url, service: key, proxyEnabled, authEnabled }
   }
 
   function updateComposeFile(ev: React.FormEvent<HTMLFormElement> | React.FocusEvent<HTMLFormElement>) {
@@ -128,6 +139,16 @@ export default function TemplateEditor() {
 
     const newYaml = YAML.stringify(withProxyConfig)
     setText(newYaml.replace(/\n(\w)/g, '\n\n$1'))
+  }
+
+  const createNetworkFetcher = useFetcher()
+
+  function createNetwork() {
+    createNetworkFetcher.submit({ network: PROXY_NETWORK }, {
+      method: 'POST',
+      action: '/api/networks',
+      encType: 'application/json',
+    })
   }
 
   if (!app) {
@@ -191,20 +212,35 @@ export default function TemplateEditor() {
             />
           </div>
           <p className="mt-8 text-lg">Expose configuration</p>
-          <hr className="mt-2 mb-6" />
-          <div className="mb-6">
-            <label className="text-zinc-500 flex items-center" htmlFor="proxyEnabled">
-              <input
-                type="checkbox"
-                name="proxyEnabled"
-                id="proxyEnabled"
-                className="mr-2"
-                checked={proxyEnabled}
-                onChange={(e) => setProxyEnabled(e.target.checked)}
-              />
-              <span>Expose App</span>
-            </label>
-          </div>
+          <hr className="mt-2 mb-3" />
+          {!networkExists && (
+            <div className="mb-6 text-sm">
+              Proxy network <strong>web</strong> does not exist
+              <button
+                type="button"
+                onClick={createNetwork}
+                aria-disabled={createNetworkFetcher.state !== 'idle'}
+                className={clsx('ml-2', buttonCN.small, buttonCN.transparent)}
+              >
+                {createNetworkFetcher.state === 'idle' ? 'Create network' : 'Creating...'}
+              </button>
+            </div>
+          )}
+          <fieldset aria-disabled={!networkExists} className="aria-disabled:opacity-50 aria-disabled:pointer-events-none">            
+            <div className="mb-6">
+              <label className="text-zinc-500 flex items-center" htmlFor="proxyEnabled">
+                <input
+                  type="checkbox"
+                  name="proxyEnabled"
+                  id="proxyEnabled"
+                  className="mr-2"
+                  checked={proxyEnabled}
+                  onChange={(e) => setProxyEnabled(e.target.checked)}
+                />
+                <span>Expose App</span>
+              </label>
+            </div>
+          </fieldset>
           <fieldset aria-disabled={!proxyEnabled} className="aria-disabled:opacity-50 aria-disabled:pointer-events-none">
             <div className="mb-6">
               <label className="text-zinc-500 flex items-center" htmlFor="hasAuth">
@@ -213,6 +249,7 @@ export default function TemplateEditor() {
                   name="hasAuth"
                   id="hasAuth"
                   className="mr-2"
+                  defaultChecked={getDefaults().authEnabled}
                 />
                 <span>Exposed App requires authentication</span>
               </label>

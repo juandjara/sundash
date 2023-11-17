@@ -6,7 +6,7 @@ import type { PsService} from "./docker.server"
 import { getPS } from "./docker.server"
 import { getComposeFiles } from "./envfile.server"
 
-type ComposeJSON = {
+export type ComposeJSON = {
   version?: string
   services: {
     [key: string]: {
@@ -19,7 +19,9 @@ type ComposeJSON = {
       networks?: string[]
       depends_on?: string[]
       restart?: string
-      labels?: string[]
+      labels?: {
+        [key: string]: string
+      }
       command?: string
       cap_add?: string[]
       cap_drop?: string[]
@@ -157,7 +159,7 @@ export function getAppLogo(app: ComposeJSON) {
 export async function saveApp({ name, compose }: { name: string; compose: string }) {
   const fullPath = path.join(
     env.configFolder,
-    name.endsWith('.yml') ? name : `${name}.yml`
+    name
   )
   await fs.writeFile(fullPath, compose)
 }
