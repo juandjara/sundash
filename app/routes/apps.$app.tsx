@@ -1,4 +1,4 @@
-import { ArrowDownCircleIcon, ArrowLeftIcon } from "@heroicons/react/20/solid"
+import { ArrowDownCircleIcon, ArrowLeftIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/20/solid"
 import { PencilIcon, MinusCircleIcon, PlusCircleIcon, ArrowDownTrayIcon, ArrowPathIcon, ArrowUpTrayIcon, CloudArrowDownIcon, StopIcon, TrashIcon } from "@heroicons/react/24/outline"
 import { json, type ActionArgs, type LoaderArgs } from "@remix-run/node"
 import { Form, Link, useActionData, useLoaderData, useNavigation, useRevalidator } from "@remix-run/react"
@@ -59,6 +59,19 @@ export default function AppDetail() {
   const transition = useNavigation()
   const busy = transition.state !== 'idle'
   const actionData = useActionData()
+
+  function getAppURL() {
+    const key = Object.keys(app.services)[0]
+    const service = app.services[key] || {}
+    const labelURL = (service.labels || {})['caddy']
+    if (labelURL) {
+      return labelURL
+    }
+
+    const portParts = service.ports?.[0] && service.ports[0].split(':')
+    const port = portParts && Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', ''))
+    return `http://localhost:${port || 80}`
+  }
 
   if (!app) {
     return null
@@ -197,6 +210,16 @@ export default function AppDetail() {
               <p>{app.runtime?.created}</p>
             </div>
           ) : null}
+          <div className="flex-grow"></div>
+          <Link to={getAppURL()}>          
+            <button
+              aria-disabled={app.runtime?.state !== 'running'}
+              className={clsx(buttonCN.normal, buttonCN.primary, buttonCN.iconLeft)}
+            >
+              <ArrowTopRightOnSquareIcon className="w-5 h-5" />
+              <p>Open app</p>
+            </button>
+          </Link>
         </div>
         <div className="mt-4">
           <div className="flex items-end justify-between mb-2">
