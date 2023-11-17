@@ -211,15 +211,14 @@ export default function AppDetail() {
             </div>
           ) : null}
           <div className="flex-grow"></div>
-          <Link to={getAppURL()}>          
-            <button
+            <Link
+              to={getAppURL()}
               aria-disabled={app.runtime?.state !== 'running'}
               className={clsx(buttonCN.normal, buttonCN.primary, buttonCN.iconLeft)}
             >
               <ArrowTopRightOnSquareIcon className="w-5 h-5" />
               <p>Open app</p>
-            </button>
-          </Link>
+            </Link>
         </div>
         <div className="mt-4">
           <div className="flex items-end justify-between mb-2">
