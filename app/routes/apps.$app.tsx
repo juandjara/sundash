@@ -1,10 +1,11 @@
-import { ArrowDownCircleIcon, ArrowLeftIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/20/solid"
+import { ArrowLeftIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/20/solid"
 import { PencilIcon, MinusCircleIcon, PlusCircleIcon, ArrowDownTrayIcon, ArrowPathIcon, ArrowUpTrayIcon, CloudArrowDownIcon, StopIcon, TrashIcon } from "@heroicons/react/24/outline"
 import { json, type ActionArgs, type LoaderArgs } from "@remix-run/node"
 import { Form, Link, useActionData, useLoaderData, useNavigation, useRevalidator } from "@remix-run/react"
 import clsx from "clsx"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useEventSource } from "remix-utils"
+import LogDisplay from "~/components/LogDisplay"
 import Logo from "~/components/Logo"
 import Layout from "~/components/layout"
 import type { ComposeJSONExtra } from "~/lib/apps"
@@ -262,36 +263,5 @@ export default function AppDetail() {
         </div>
       </div>
     </Layout>
-  )
-}
-
-function LogDisplay({ text, className = '' }: { text: string; className?: string }) {
-  const logsRef = useRef<HTMLPreElement>(null)
-
-  function scrollToBottom() {
-    if (logsRef.current) {
-      logsRef.current.scrollTop = logsRef.current.scrollHeight
-    }
-  }
-
-  if (!text) {
-    return null
-  }
-
-  const numLines = text.split('\n').length
-
-  return (
-    <div className={clsx(className, 'relative')}>
-      <pre ref={logsRef} className="overflow-auto max-h-[500px] p-3 bg-zinc-100 rounded-md">{text.trim()}</pre>
-      {numLines > 10 ? (
-        <button
-          title='Scroll to bottom'
-          onClick={scrollToBottom}
-          className={clsx('absolute bottom-2 right-2 hover:bg-white', buttonCN.normal, buttonCN.icon)}
-        >
-          <ArrowDownCircleIcon className="w-6 h-6" />
-        </button>
-      ) : null}
-    </div>
   )
 }
