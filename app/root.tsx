@@ -12,6 +12,7 @@ import {
 } from "@remix-run/react"
 
 import stylesheet from "~/tailwind.css"
+import GlobalSpinner from "./components/GlobalSpinner"
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -29,6 +30,7 @@ export default function App() {
         <Links />
       </head>
       <body className="bg-zinc-100">
+        <GlobalSpinner />
         <Outlet />
         <ScrollRestoration />
         <Scripts />
