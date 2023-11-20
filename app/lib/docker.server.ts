@@ -5,8 +5,8 @@ import env from "./env.server"
 import { emitter } from "./emitter.server"
 import { addToDotEnv, removeFromDotEnv } from './envfile.server'
 import fs from 'fs/promises'
-
 import Dockerode from 'dockerode'
+import { redirect } from '@remix-run/node'
 
 export async function getPS(psPath: string) {
   const normalizedPath = path.join(psPath)
@@ -26,13 +26,15 @@ export async function getPS(psPath: string) {
 
 export type PsService = ReturnType<typeof parseService>
 
+export type RuntimeState = 'paused' | 'restarting' | 'removing' | 'running' | 'dead' | 'created' | 'exited'
+
 function parseService(composeService: any) {
   return {
     created: composeService.CreatedAt,
     id: composeService.ID,
     image: composeService.Image as string,
     name: composeService.Name as string,
-    state: composeService.State as 'paused' | 'restarting' | 'removing' | 'running' | 'dead' | 'created' | 'exited',
+    state: composeService.State as RuntimeState,
     status: composeService.Status as string,
     service: composeService.Service as string,
   }
@@ -70,9 +72,10 @@ type ComposeCommand = {
   filename: string
   key: string
   op: 'enable' | 'disable' | 'delete' | 'stop' | 'restart' | 'kill' | 'up' | 'down' | 'pull'
+  state?: RuntimeState
 }
 
-export async function handleDockerOperation({ filename, key, op }: ComposeCommand) {
+export async function handleDockerOperation({ filename, key, op, state }: ComposeCommand) {
   try {
     if (op === 'restart') {
       const res = await compose.restartOne(key, {
@@ -129,9 +132,24 @@ export async function handleDockerOperation({ filename, key, op }: ComposeComman
       return removeFromDotEnv(filename)
     }
     if (op === 'delete') {
-      throw new Error('Not implemented')
+      if (state) {
+        await compose.down({
+          cwd: env.configFolder,
+          config: filename,
+          commandOptions: ['--volumes'],
+          callback: (chunk) => emitter.emit('message', chunk.toString()),
+        })
+      }
+      await Promise.all([
+        removeFromDotEnv(filename),
+        fs.unlink(path.join(env.configFolder, filename))
+      ])
+      throw redirect('/apps')
     }
   } catch (err) {
+    if (err instanceof Response) {
+      throw err
+    }
     return parseComposeResult(err as any)
   }
 }

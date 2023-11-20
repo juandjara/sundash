@@ -7,8 +7,9 @@ import { useEffect, useRef, useState } from "react"
 import { useEventSource } from "remix-utils"
 import Logo from "~/components/Logo"
 import Layout from "~/components/layout"
-import type { ComposeJSONExtra} from "~/lib/apps"
+import type { ComposeJSONExtra } from "~/lib/apps"
 import { getApp, getStateColor, getStateTitle } from "~/lib/apps"
+import type { RuntimeState } from "~/lib/docker.server"
 import { getLogs, handleDockerOperation, readComposeFile, streamLogs } from "~/lib/docker.server"
 import { buttonCN } from "~/lib/styles"
 
@@ -33,10 +34,15 @@ export async function action({ request }: ActionArgs) {
       op,
       key: fd.get('key') as string,
       filename: fd.get('filename') as string,
+      state: fd.get('state') as RuntimeState
     })
   
     return json({ msg: res })
   } catch (err) {
+    if (err instanceof Response) {
+      throw err
+    }
+
     const msg = String((err as Error).message)
     return json({ error: msg })
   }
@@ -98,9 +104,10 @@ export default function AppDetail() {
           <p>Back to app list</p>
         </button>
       </Link>
-      <Form method="POST" className="">
+      <Form method="POST">
         <input type="hidden" name="key" value={app.key} />
         <input type="hidden" name="filename" value={app.filename} />
+        <input type="hidden" name="state" value={app.runtime?.state} />
         <div className="flex flex-wrap items-center gap-4 mb-4">
           <Logo
             src={app.logo}
@@ -149,6 +156,12 @@ export default function AppDetail() {
               aria-disabled={busy}
               name="op"
               value="delete"
+              onClick={(ev) => {
+                if (!confirm(`${app.filename} will be removed from disk and from .env file. Are you sure? This action cannot be undone.`)) {
+                  ev.preventDefault()
+                  ev.stopPropagation()
+                }
+              }}
               className={clsx(buttonCN.normal, buttonCN.delete, 'border-2 border-red-200', buttonCN.iconLeft)}
             >
               <TrashIcon className="w-5 h-5" />
