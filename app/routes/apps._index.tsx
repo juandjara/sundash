@@ -44,7 +44,7 @@ export default function Apps() {
           {' '}or install from the <Link className="underline text-pink-500" to='/appstore'>App Store</Link>.
         </p>
       )}
-      <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 py-4 px-2">
+      <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 py-4 md:px-2">
         {enabledApps.map((app) => (
           <AppCard app={app} key={app.id} />
         ))}
