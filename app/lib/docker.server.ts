@@ -48,6 +48,17 @@ export async function getLogs(service: string, configFilename: string) {
   return msg
 }
 
+export async function streamLogs(service: string, configFilename: string) {
+  const res = await compose.logs(service, {
+    cwd: env.configFolder,
+    config: configFilename,
+    commandOptions: ['--no-color', '--follow'],
+    follow: true,
+    callback: (chunk) => emitter.emit('log', chunk.toString()),
+  })
+  return parseComposeResult(res)
+}
+
 function parseComposeResult(res: IDockerComposeResult) {
   if (res.exitCode !== 0) {
     throw new Error(String(res.err || res.out || 'Unknown error from docker-compose'))

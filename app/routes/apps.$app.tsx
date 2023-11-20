@@ -9,7 +9,7 @@ import Logo from "~/components/Logo"
 import Layout from "~/components/layout"
 import type { ComposeJSONExtra} from "~/lib/apps"
 import { getApp, getStateColor, getStateTitle } from "~/lib/apps"
-import { getLogs, handleDockerOperation, readComposeFile } from "~/lib/docker.server"
+import { getLogs, handleDockerOperation, readComposeFile, streamLogs } from "~/lib/docker.server"
 import { buttonCN } from "~/lib/styles"
 
 export async function loader({ params }: LoaderArgs) {
@@ -18,6 +18,7 @@ export async function loader({ params }: LoaderArgs) {
     const yaml = await readComposeFile(filename)
     const app = await getApp(filename, yaml)
     const logs = await getLogs(app.key, app.filename)
+    streamLogs(app.key, app.filename)
     return { app, logs }
   } catch (err) {
     throw new Response(null, { status: 500, statusText: String((err as Error).message) })
@@ -52,10 +53,22 @@ function useEventLog() {
   return logs
 }
 
+function useLogs(initial: string) {
+  const [logs, setLogs] = useState(initial.split('\n'))
+  const lastLog = useEventSource(`/api/logs`, { event: 'log' })
+  useEffect(() => {
+    if (lastLog) {
+      setLogs((prev) => [...prev, lastLog])
+    }
+  }, [lastLog])
+  return logs
+}
+
 export default function AppDetail() {
-  const { app, logs } = useLoaderData() as { app: ComposeJSONExtra; logs: string }
+  const { app, logs: initialLogs } = useLoaderData() as { app: ComposeJSONExtra; logs: string }
   const revalidator = useRevalidator()
   const events = useEventLog()
+  const logs = useLogs(initialLogs)
   const transition = useNavigation()
   const busy = transition.state !== 'idle'
   const actionData = useActionData()
@@ -232,7 +245,7 @@ export default function AppDetail() {
               <p>Reload</p>
             </button>
           </div>
-          <LogDisplay text={logs} />
+          <LogDisplay text={logs.join('\n')} />
         </div>
       </div>
     </Layout>
