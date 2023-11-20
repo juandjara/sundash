@@ -1,3 +1,5 @@
+import env from "./env.server"
+
 export function editComposeForSundash(json: any, params: { title: string, logo: string, service: string }) {
   const { title, logo, service: key } = params
 
@@ -26,8 +28,9 @@ export function editComposeForProxy(json: any, params: {
   service: string,
   hasAuth: boolean
   proxyEnabled: boolean
+  proxyNetwork: string
 }) {
-  const { url, port, service: key, hasAuth, proxyEnabled } = params
+  const { url, port, service: key, hasAuth, proxyEnabled, proxyNetwork } = params
 
   if (!json.services[key]) {
     throw new Error(`Service ${key} not found`)
@@ -36,8 +39,8 @@ export function editComposeForProxy(json: any, params: {
   if (proxyEnabled) {
     // add proxy network
     json.services[key].networks = json.services[key].networks || []
-    if (!json.services[key].networks.includes('web')) {
-      json.services[key].networks.push('web')
+    if (!json.services[key].networks.includes(proxyNetwork)) {
+      json.services[key].networks.push(proxyNetwork)
     }
   
     // add caddy labels
@@ -48,7 +51,7 @@ export function editComposeForProxy(json: any, params: {
     json.services[key].labels['caddy'] = fullUrl.toString().replace(/\/$/, '')
 
     if (hasAuth) {
-      json.services[key].labels['caddy.authorize'] = 'with auth_policy'
+      json.services[key].labels['caddy.authorize'] = env.authorizeConfig
     } else {
       delete json.services[key].labels['caddy.authorize']
     }
@@ -62,7 +65,7 @@ export function editComposeForProxy(json: any, params: {
   } else {
     // remove proxy network
     json.services[key].networks = json.services[key].networks || []
-    json.services[key].networks = json.services[key].networks.filter((n: string) => n !== 'web')
+    json.services[key].networks = json.services[key].networks.filter((n: string) => n !== proxyNetwork)
     if (json.services[key].networks.length === 0) {
       delete json.services[key].networks
     }

@@ -11,6 +11,7 @@ import { getApp, saveApp } from "~/lib/apps"
 import { getComposeTemplate, getTemplate } from "~/lib/appstore"
 import { checkNetworkExists, readComposeFile } from "~/lib/docker.server"
 import { editComposeForProxy, editComposeForSundash } from "~/lib/editor"
+import env from "~/lib/env.server"
 import { buttonCN, inputCN } from "~/lib/styles"
 
 const blankApp = {
@@ -29,11 +30,16 @@ services:
     - 80:80
 `
 
-const PROXY_NETWORK = 'web'
-
 export async function loader({ request }: LoaderArgs) {
   const source = new URL(request.url).searchParams.get('source') || '' as 'appstore' | 'file' | 'new'
-  const networkExists = await checkNetworkExists(PROXY_NETWORK)
+  const networkExists = await checkNetworkExists(env.dockerProxyNetwork)
+
+  const base = {
+    source,
+    networkExists,
+    proxyNetwork: env.dockerProxyNetwork,
+    baseAppsDomain: env.baseAppsDomain,
+  }
 
   if (source === 'appstore') {
     const query = new URL(request.url).searchParams.get('q') || ''
@@ -46,10 +52,9 @@ export async function loader({ request }: LoaderArgs) {
     }
   
     return {
+      ...base,
       app,
       composeYaml: await getComposeTemplate(app),
-      source,
-      networkExists
     }
   }
   if (source === 'file') {
@@ -57,18 +62,16 @@ export async function loader({ request }: LoaderArgs) {
     const yaml = await readComposeFile(filename)
     const app = await getApp(filename, yaml)
     return {
+      ...base,
       app,
       composeYaml: yaml,
-      source,
-      networkExists
     }
   }
 
   return {
+    ...base,
     app: blankApp,
     composeYaml: blankYaml,
-    source,
-    networkExists
   }
 }
 
@@ -92,7 +95,14 @@ function tryParseYaml(yaml: string) {
 }
 
 export default function TemplateEditor() {
-  const { app, composeYaml, source, networkExists } = useLoaderData<typeof loader>()
+  const {
+    app,
+    composeYaml,
+    source,
+    networkExists,
+    proxyNetwork,
+    baseAppsDomain
+  } = useLoaderData<typeof loader>()
   const navigate = useNavigate()
   const [text, setText] = useState(composeYaml)
   const composeJSON = useMemo(() => tryParseYaml(text), [text])
@@ -123,7 +133,7 @@ export default function TemplateEditor() {
     const firstPort = String(service.ports?.[0]) || ''
     const portParts = firstPort.split(':')
     const port = portParts?.length ? Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', '')) : undefined
-    const url = `${app.name}.example.com`
+    const url = `${app.name}.${baseAppsDomain}`
     const proxyEnabled = !!service.labels?.['caddy']
     const authEnabled = !!service.labels?.['caddy.authorize']
     return { port, url, service: key, proxyEnabled, authEnabled }
@@ -145,6 +155,7 @@ export default function TemplateEditor() {
       url: fd.get('url') as string,
       hasAuth: fd.get('hasAuth') === 'on',
       proxyEnabled: fd.get('proxyEnabled') === 'on',
+      proxyNetwork,
       service,
     })
 
@@ -155,9 +166,9 @@ export default function TemplateEditor() {
   const createNetworkFetcher = useFetcher()
 
   function createNetwork() {
-    createNetworkFetcher.submit({ network: PROXY_NETWORK }, {
+    createNetworkFetcher.submit({}, {
       method: 'POST',
-      action: '/api/networks',
+      action: '/api/create-network',
       encType: 'application/json',
     })
   }
@@ -296,8 +307,8 @@ export default function TemplateEditor() {
                 type="url"
                 name="url"
                 id="url"
-                placeholder="example.com"
                 required
+                placeholder={`app.${baseAppsDomain}`}
                 defaultValue={getDefaults().url}
               />
             </div>
