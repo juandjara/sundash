@@ -120,8 +120,9 @@ export default function TemplateEditor() {
   function getDefaults() {
     const key = Object.keys(composeJSON.services)[0]
     const service = composeJSON.services[key] || {}
-    const portParts = service.ports?.[0] && service.ports[0].split(':')
-    const port = portParts && Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', ''))
+    const firstPort = String(service.ports?.[0]) || ''
+    const portParts = firstPort.split(':')
+    const port = portParts?.length ? Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', '')) : undefined
     const url = `${app.name}.example.com`
     const proxyEnabled = !!service.labels?.['caddy']
     const authEnabled = !!service.labels?.['caddy.authorize']
