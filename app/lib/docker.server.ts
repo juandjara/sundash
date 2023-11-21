@@ -35,20 +35,18 @@ function parseService(composeService: any) {
   }
 }
 
-export async function getLogs(service: string, configFilename: string) {
+export async function getLogs(service: string) {
   const res = await compose.logs(service, {
     cwd: env.configFolder,
-    config: configFilename,
     commandOptions: ['--no-color', '--tail', '100'],
   })
   const msg = parseComposeResult(res)
   return msg
 }
 
-export async function streamLogs(service: string, configFilename: string) {
+export async function streamLogs(service: string) {
   const res = await compose.logs(service, {
     cwd: env.configFolder,
-    config: configFilename,
     commandOptions: ['--no-color', '--follow'],
     follow: true,
     callback: (chunk) => emitter.emit('log', chunk.toString()),
@@ -75,7 +73,6 @@ export async function handleDockerOperation({ filename, key, op, state }: Compos
     if (op === 'restart') {
       const res = await compose.restartOne(key, {
         cwd: env.configFolder,
-        config: filename,
         callback: (chunk) => emitter.emit('message', chunk.toString()),
       })
       return parseComposeResult(res)
@@ -83,7 +80,6 @@ export async function handleDockerOperation({ filename, key, op, state }: Compos
     if (op === 'up') {
       const res = await compose.upOne(key, {
         cwd: env.configFolder,
-        config: filename,
         callback: (chunk) => emitter.emit('message', chunk.toString()),
       })
       return parseComposeResult(res)
@@ -91,7 +87,6 @@ export async function handleDockerOperation({ filename, key, op, state }: Compos
     if (op === 'down') {
       const res = await compose.down({
         cwd: env.configFolder,
-        config: filename,
         callback: (chunk) => emitter.emit('message', chunk.toString()),
       })
       return parseComposeResult(res)
@@ -99,7 +94,6 @@ export async function handleDockerOperation({ filename, key, op, state }: Compos
     if (op === 'stop') {
       const res = await compose.stopOne(key, {
         cwd: env.configFolder,
-        config: filename,
         callback: (chunk) => emitter.emit('message', chunk.toString()),
       })
       return parseComposeResult(res)
@@ -107,7 +101,6 @@ export async function handleDockerOperation({ filename, key, op, state }: Compos
     if (op === 'kill') {
       const res = await compose.kill({
         cwd: env.configFolder,
-        config: filename,
         callback: (chunk) => emitter.emit('message', chunk.toString()),
       })
       return parseComposeResult(res)
@@ -115,7 +108,6 @@ export async function handleDockerOperation({ filename, key, op, state }: Compos
     if (op === 'pull') {
       const res = await compose.pullOne(key, {
         cwd: env.configFolder,
-        config: filename,
         callback: (chunk) => emitter.emit('message', chunk.toString()),
       })
       return parseComposeResult(res)
@@ -130,7 +122,6 @@ export async function handleDockerOperation({ filename, key, op, state }: Compos
       if (state) {
         await compose.down({
           cwd: env.configFolder,
-          config: filename,
           commandOptions: ['--volumes'],
           callback: (chunk) => emitter.emit('message', chunk.toString()),
         })

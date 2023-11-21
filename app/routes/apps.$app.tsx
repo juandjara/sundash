@@ -19,8 +19,8 @@ export async function loader({ params }: LoaderArgs) {
   try {
     const yaml = await readComposeFile(filename)
     const app = await getApp(filename, yaml)
-    const logs = await getLogs(app.key, app.filename)
-    streamLogs(app.key, app.filename)
+    const logs = await getLogs(app.key)
+    streamLogs(app.key)
     return { app, logs }
   } catch (err) {
     throw new Response(null, { status: 500, statusText: String((err as Error).message) })
