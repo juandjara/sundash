@@ -10,10 +10,10 @@ import { redirect } from '@remix-run/node'
 
 export async function getPS(psPath: string) {
   const normalizedPath = path.join(psPath)
-  const res = await compose.ps({
+  const res = await compose.execCompose('ps', ['--format', 'json'], {
     cwd: normalizedPath,
-    commandOptions: ['--all', ['--format', 'json']]
   })
+
   try {
     const servicesRaw = JSON.parse(`[${res.out.trim().replace(/\}\{/g, '},{')}]`)
     return {
