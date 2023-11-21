@@ -59,10 +59,10 @@ function ErrorLayout({ error }: { error: Error }) {
     </html>
   )
 }
-function HttpErrorLayout({ error }: { error: Error }) {
-  if(!isRouteErrorResponse(error)) {
-    return null
-  }
+
+type HTTPError = Pick<Response, 'status' | 'statusText'> & { data: string | { message: string } }
+
+function HttpErrorLayout({ error }: { error: HTTPError }) {
   const { status, statusText, data } = error
   const title = `${status} ${statusText}`
   const message = typeof data === 'string' ? data : data?.message
@@ -88,19 +88,34 @@ function HttpErrorLayout({ error }: { error: Error }) {
   )
 }
 
+function isDockerError(error: any): error is { exitCode: number, err: string; out: string } {
+  return typeof error === 'object' && error !== null && 'exitCode' in error && 'err' in error && 'out' in error
+}
+
 export function ErrorBoundary() {
   const error = useRouteError()
 
   if (isRouteErrorResponse(error)) {
-    return <HttpErrorLayout error={error as any} />
+    return <HttpErrorLayout error={error as HTTPError} />
   } else if (error instanceof Error) {
-    return <ErrorLayout error={error} />
+    return <ErrorLayout error={error} /> 
+  } else if (isDockerError(error)) {
+    return <HttpErrorLayout error={{ status: 500, statusText: 'Docker Error', data: error.err }} />
   } else {
     return (
-      <div>
-        <h1>Unknown Error</h1>
-        <pre>{String(error)}</pre>
-      </div>
+      <html>
+        <head>
+          <title>Oh no!</title>
+          <Meta />
+          <Links />
+        </head>
+        <body className="p-3 max-w-prose mx-auto py-8">
+          <div>
+            <h1 className="text-2xl mb-2 text-red-500">Unknown Error</h1>
+            <pre className="p-2 rounded-md border border-red-500">{JSON.stringify(error)}</pre>
+          </div>
+        </body>
+      </html>
     )
   }
 }
