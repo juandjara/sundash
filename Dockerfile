@@ -1,6 +1,8 @@
 # base node image
 FROM node:18-alpine as base
 
+RUN apk add docker
+
 # Install all node_modules, including dev dependencies
 FROM base as deps
 
