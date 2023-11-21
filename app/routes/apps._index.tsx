@@ -19,7 +19,7 @@ export default function Apps() {
   const disabledApps = apps.filter((app) => !app.enabled)
 
   const numCreatedApps = enabledApps.filter((app) => app.runtime).length
-  const numRunningApps = enabledApps.filter((app) => app.runtime?.state === 'running').length
+  const numRunningApps = enabledApps.filter((app) => app.runtime?.state === 'up').length
 
   return (
     <Layout>

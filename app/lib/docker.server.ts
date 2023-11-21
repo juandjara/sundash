@@ -10,14 +10,13 @@ import { redirect } from '@remix-run/node'
 
 export async function getPS(psPath: string) {
   const normalizedPath = path.join(psPath)
-  const res = await compose.execCompose('ps', ['--format', 'json'], {
+  const res = await compose.ps({
     cwd: normalizedPath,
+    commandOptions: ['--all']
   })
-
   try {
-    const servicesRaw = JSON.parse(`[${res.out.trim().replace(/\}\{/g, '},{')}]`)
     return {
-      services: servicesRaw.map(parseService) as PsService[],
+      services: res.data.services.map(parseService) as PsService[],
     }
   } catch (err) {
     throw new Error('Error parsing stdout JSON')
@@ -26,17 +25,13 @@ export async function getPS(psPath: string) {
 
 export type PsService = ReturnType<typeof parseService>
 
-export type RuntimeState = 'paused' | 'restarting' | 'removing' | 'running' | 'dead' | 'created' | 'exited'
+export type RuntimeState = 'up' | 'exited' | 'restarting' | 'created'
 
 function parseService(composeService: any) {
   return {
-    created: composeService.CreatedAt,
-    id: composeService.ID,
-    image: composeService.Image as string,
-    name: composeService.Name as string,
-    state: composeService.State as RuntimeState,
-    status: composeService.Status as string,
-    service: composeService.Service as string,
+    service: composeService.name,
+    status: composeService.state,
+    state: composeService.state.split(' ')[0]?.toLowerCase(),
   }
 }
 

@@ -68,6 +68,7 @@ export type ComposeJSONExtra = ComposeJSON & {
 export async function getAppsState() {
   const configFolder = env.configFolder
   const { services } = await getPS(configFolder)
+  console.log(services)
   return services.reduce((acc, s) => {
     acc[s.service] = s
     return acc
@@ -165,33 +166,21 @@ export async function saveApp({ name, compose }: { name: string; compose: string
 }
 
 export function getStateColor(app: ComposeJSONExtra) {
-  if (app.runtime?.state === 'running') {
+  if (!app.runtime) {
+    return 'bg-zinc-300'
+  }
+  if (app.runtime?.state === 'up') {
     return 'bg-green-500'
   }
-  if (app.runtime?.state === 'exited' || app.runtime?.state === 'created') {
-    return 'bg-red-500'
-  }
-  if (app.runtime?.state === 'removing'  || app.runtime?.state === 'restarting') {
-    return 'bg-yellow-500'
-  }
-  return 'bg-zinc-300'
+  return 'bg-red-500'
 }
 
 export function getStateTitle(app: ComposeJSONExtra) {
-  if (app.runtime?.state === 'running') {
-    return 'Running'
-  }
-  if (app.runtime?.state === 'exited' || app.runtime?.state === 'created') {
-    return 'Stopped'
-  }
-  if (app.runtime?.state === 'restarting') {
-    return 'Restarting'
-  }
-  if (app.runtime?.state === 'removing') {
-    return 'Removing'
-  }
   if (!app.runtime) {
     return 'Not created'
+  }
+  if (app.runtime?.state === 'up') {
+    return 'Running'
   }
   return 'Not running'
 }

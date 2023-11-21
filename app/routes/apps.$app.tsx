@@ -229,18 +229,10 @@ export default function AppDetail() {
               <p>{app.runtime?.status}</p>
             </div>
           ) : null}
-          {app.runtime?.created ? (  
-            <div>
-              <p>
-                <small className="text-gray-500">Created at: </small>
-              </p>
-              <p>{app.runtime?.created}</p>
-            </div>
-          ) : null}
           <div className="flex-grow"></div>
             <Link
               to={getAppURL()}
-              aria-disabled={app.runtime?.state !== 'running'}
+              aria-disabled={app.runtime?.state !== 'up'}
               className={clsx(buttonCN.normal, buttonCN.primary, buttonCN.iconLeft)}
             >
               <ArrowTopRightOnSquareIcon className="w-5 h-5" />
