@@ -44,7 +44,7 @@ WORKDIR /app
 COPY --from=production-deps /app/node_modules /app/node_modules
 
 # install docker
-RUN addgroup docker && adduser node docker
+RUN addgroup node docker
 COPY --from=docker:latest /usr/local/bin/docker /usr/bin/docker
 COPY --from=docker/compose-bin:edge /docker-compose /usr/libexec/docker/cli-plugins/docker-compose
 
