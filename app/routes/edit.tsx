@@ -128,35 +128,39 @@ export default function TemplateEditor() {
   }
 
   function getDefaults() {
-    const key = Object.keys(composeJSON.services)[0]
+    const xsundash = composeJSON["x-sundash"]
+    const key = xsundash?.service || Object.keys(composeJSON.services)[0]
     const service = composeJSON.services[key] || {}
-    const firstPort = String(service.ports?.[0]) || ''
-    const portParts = firstPort.split(':')
-    const port = portParts?.length ? Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', '')) : undefined
-    const url = `${app.name}.${baseAppsDomain}`
-    const proxyEnabled = !!service.labels?.['caddy']
-    const authEnabled = !!service.labels?.['caddy.authorize']
+    let port = xsundash?.port
+    if (!port) {
+      const firstPort = String(service.ports?.[0]) || ''
+      const portParts = firstPort.split(':')
+      port = portParts?.length ? Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', '')) : undefined
+    }
+    const url = xsundash?.url || `${app.name}.${baseAppsDomain}`
+    const proxyEnabled = xsundash?.proxyEnabled || !!service.labels?.['caddy']
+    const authEnabled = xsundash?.hasAuth || !!service.labels?.['caddy.authorize']
+    
     return { port, url, service: key, proxyEnabled, authEnabled }
   }
 
   function updateComposeFile(ev: React.FormEvent<HTMLFormElement> | React.FocusEvent<HTMLFormElement>) {
     ev.preventDefault()
     const fd = new FormData(ev.currentTarget)
-    const service = fd.get('service') as string
-
-    const withSundashConfig = editComposeForSundash(composeJSON, {
+    const xsundash = {
       title: fd.get('title') as string,
       logo: fd.get('logoURL') as string,
-      service,
-    })
-
-    const withProxyConfig = editComposeForProxy(withSundashConfig, {
+      proxyEnabled: fd.get('proxyEnabled') === 'on',
+      hasAuth: fd.get('hasAuth') === 'on',
+      service: fd.get('service') as string,
       port: Number(fd.get('port') || NaN),
       url: fd.get('url') as string,
-      hasAuth: fd.get('hasAuth') === 'on',
-      proxyEnabled: fd.get('proxyEnabled') === 'on',
+    }
+
+    const withSundashConfig = editComposeForSundash(composeJSON, xsundash)
+    const withProxyConfig = editComposeForProxy(withSundashConfig, {
+      ...xsundash,
       proxyNetwork,
-      service,
     })
 
     const newYaml = YAML.stringify(withProxyConfig)
@@ -196,7 +200,7 @@ export default function TemplateEditor() {
           <p className="text-xl">Edit this docker compose template and deploy it on your server.</p>
         </div>
       </div>
-      <div className="flex flex-wrap items-start gap-6 my-6">
+      <div className="flex flex-wrap items-start gap-6 mt-6 mb-3">
         <form
           onSubmit={updateComposeFile}
           onBlur={updateComposeFile}

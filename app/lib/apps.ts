@@ -6,6 +6,16 @@ import type { PsService} from "./docker.server"
 import { getPS } from "./docker.server"
 import { getComposeFiles } from "./envfile.server"
 
+export type XSundash = {
+  title: string
+  logo: string
+  proxyEnabled: boolean
+  hasAuth: boolean
+  service: string
+  port: number
+  url: string
+}
+
 export type ComposeJSON = {
   version?: string
   services: {
@@ -40,18 +50,7 @@ export type ComposeJSON = {
       external: boolean
     }
   }
-  'x-sundash'?: {
-    main_container: string
-    title: string
-    logo: string
-    service: string
-    // TODO add this:
-    // name: string
-    // description: string
-    // icon: string
-    // url: string
-    // category: string
-  }
+  'x-sundash'?: XSundash
 }
 
 export type ComposeJSONExtra = ComposeJSON & {
@@ -68,7 +67,6 @@ export type ComposeJSONExtra = ComposeJSON & {
 export async function getAppsState() {
   const configFolder = env.configFolder
   const { services } = await getPS(configFolder)
-  console.log(services)
   return services.reduce((acc, s) => {
     acc[s.service] = s
     return acc

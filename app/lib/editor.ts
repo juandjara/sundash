@@ -1,35 +1,19 @@
+import type { ComposeJSON, XSundash } from "./apps"
 import env from "./env.server"
 
-export function editComposeForSundash(json: any, params: { title: string, logo: string, service: string }) {
-  const { title, logo, service: key } = params
-
-  if (!json.services[key]) {
-    throw new Error(`Service ${key} not found`)
+export function editComposeForSundash(json: ComposeJSON, params: XSundash) {
+  const key = params.service
+  const serviceData = json.services[key]
+  if (serviceData) {
+    // ensure service has container name
+    serviceData.container_name = serviceData.container_name || key
   }
 
-  const service = json.services[key]
-
-  // ensure service has container name
-  service.container_name = service.container_name || key
-
-  json['x-sundash'] = {
-    service: key,
-    main_container: service.container_name,
-    title,
-    logo,
-  }
-
+  json['x-sundash'] = params
   return json
 }
 
-export function editComposeForProxy(json: any, params: {
-  url: string,
-  port: number,
-  service: string,
-  hasAuth: boolean
-  proxyEnabled: boolean
-  proxyNetwork: string
-}) {
+export function editComposeForProxy(json: any, params: XSundash & { proxyNetwork: string }) {
   const { url, port, service: key, hasAuth, proxyEnabled, proxyNetwork } = params
 
   if (!json.services[key]) {
