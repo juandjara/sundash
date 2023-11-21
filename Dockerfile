@@ -1,8 +1,5 @@
 # base node image
-FROM node:16-bullseye-slim as base
-
-# Install openssl for Prisma
-RUN apt-get update && apt-get install -y openssl
+FROM node:18-alpine as base
 
 # Install all node_modules, including dev dependencies
 FROM base as deps
@@ -33,10 +30,6 @@ WORKDIR /app
 
 COPY --from=deps /app/node_modules /app/node_modules
 
-# If we're using Prisma, uncomment to cache the prisma schema
-# ADD prisma .
-# RUN npx prisma generate
-
 ADD . .
 RUN npm run build
 
@@ -54,9 +47,7 @@ COPY --from=production-deps /app/node_modules /app/node_modules
 COPY --from=docker:latest /usr/local/bin/docker /usr/bin/docker
 COPY --from=docker/compose-bin:edge /docker-compose /usr/libexec/docker/cli-plugins/docker-compose
 
-# Uncomment if using Prisma
-# COPY --from=build /app/node_modules/.prisma /app/node_modules/.prisma
-
+# copy app files
 COPY --from=build /app/build /app/build
 COPY --from=build /app/public /app/public
 ADD . .
