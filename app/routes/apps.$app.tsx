@@ -89,8 +89,7 @@ export default function AppDetail() {
     }
 
     const portParts = service.ports?.[0] && service.ports[0].split(':')
-    const port = portParts && Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', ''))
-    return `http://localhost:${port || 80}`
+    return `http://localhost:${portParts?.[0] || 80}`
   }
 
   if (!app) {
