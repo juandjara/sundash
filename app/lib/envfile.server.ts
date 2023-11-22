@@ -5,7 +5,7 @@ import path from 'path'
 import { emitter } from "./emitter.server"
 
 export function loadAppsEnv() {
-  dotenv.config({ path: path.join(env.configFolder, '.env') })
+  return dotenv.config({ path: path.join(env.configFolder, '.env') }) as NodeJS.ProcessEnv
 }
 
 export function getComposeFiles() {
