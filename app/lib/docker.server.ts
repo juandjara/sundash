@@ -3,17 +3,15 @@ import { v2 as compose } from 'docker-compose'
 import path from 'path'
 import env from "./env.server"
 import { emitter } from "./emitter.server"
-import { addToDotEnv, loadAppsEnv, removeFromDotEnv } from './envfile.server'
+import { addToDotEnv, removeFromDotEnv } from './envfile.server'
 import fs from 'fs/promises'
 import Dockerode from 'dockerode'
 import { redirect } from '@remix-run/node'
 
-export async function getPS(psPath: string) {
-  const envVars = loadAppsEnv()
-  const normalizedPath = path.join(psPath)
+export async function getPS(folder: string, files: string[]) {
   const res = await compose.ps({
-    cwd: normalizedPath,
-    config: envVars.COMPOSE_FILE,
+    cwd: folder,
+    config: files
   })
   try {
     return {

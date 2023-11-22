@@ -1,34 +1,39 @@
-import dotenv from 'dotenv'
 import env from "./env.server"
 import fs from 'fs/promises'
 import path from 'path'
 import { emitter } from "./emitter.server"
 
-export function loadAppsEnv() {
-  const vars = dotenv.config({ path: path.join(env.configFolder, '.env') }) as NodeJS.ProcessEnv
-  return {
-    NODE_ENV: vars.NODE_ENV || 'development',
-    COMPOSE_PATH_SEPARATOR: vars.COMPOSE_PATH_SEPARATOR || ':',
-    COMPOSE_FILE: vars.COMPOSE_FILE || 'docker-compose.yml',
-  } as NodeJS.ProcessEnv
-}
-
-export function getComposeFiles() {
-  const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
-  const separator = configFolderENV.parsed?.COMPOSE_PATH_SEPARATOR || ':'
-  const composeFiles = (configFolderENV.parsed?.COMPOSE_FILE || 'docker-compose.yml').split(separator)
+export async function getComposeFiles() {
+  const configFolderENV = await readEnvFile()
+  const separator = configFolderENV.COMPOSE_PATH_SEPARATOR || ':'
+  const composeFiles = (configFolderENV.COMPOSE_FILE || 'docker-compose.yml').split(separator)
   return composeFiles
 }
 
+export async function readEnvFile() {
+  const text = await fs.readFile(path.join(env.configFolder, '.env'), {
+    encoding: 'utf8',
+    flag: 'a+',
+  })
+  const envVars = {} as Record<string, string>
+  text.split('\n').forEach((line) => {
+    const [key, value] = line.split('=')
+    if (key && value) {
+      envVars[key] = value
+    }
+  })
+  return envVars
+}
+
 export async function addToDotEnv(filename: string) {
-  const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
-  const separator = configFolderENV.parsed?.COMPOSE_PATH_SEPARATOR || ':'
-  const fileListText = configFolderENV.parsed?.COMPOSE_FILE || ''
+  const configFolderENV = await readEnvFile()
+  const separator = configFolderENV.COMPOSE_PATH_SEPARATOR || ':'
+  const fileListText = configFolderENV.COMPOSE_FILE || ''
   const composeFiles = new Set(fileListText.split(separator))
   composeFiles.add(filename)
 
   const newDotEnv = Object.entries({
-    ...configFolderENV.parsed,
+    ...configFolderENV,
     COMPOSE_PATH_SEPARATOR: separator,
     COMPOSE_FILE: Array.from(composeFiles).join(separator),
   })
@@ -40,14 +45,14 @@ export async function addToDotEnv(filename: string) {
 }
 
 export async function removeFromDotEnv(filename: string) {
-  const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
-  const separator = configFolderENV.parsed?.COMPOSE_PATH_SEPARATOR || ':'
-  const fileListText = configFolderENV.parsed?.COMPOSE_FILE || ''
+  const configFolderENV = await readEnvFile()
+  const separator = configFolderENV.COMPOSE_PATH_SEPARATOR || ':'
+  const fileListText = configFolderENV.COMPOSE_FILE || ''
   const composeFiles = new Set(fileListText.split(separator))
   composeFiles.delete(filename)
 
   const newDotEnv = Object.entries({
-    ...configFolderENV.parsed,
+    ...configFolderENV,
     COMPOSE_PATH_SEPARATOR: separator,
     COMPOSE_FILE: Array.from(composeFiles).join(separator),
   })

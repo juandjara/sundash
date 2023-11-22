@@ -64,9 +64,9 @@ export type ComposeJSONExtra = ComposeJSON & {
   logo: string
 }
 
-export async function getAppsState() {
+export async function getAppsState(files: string[]) {
   const configFolder = env.configFolder
-  const { services } = await getPS(configFolder)
+  const { services } = await getPS(configFolder, files)
   return services.reduce((acc, s) => {
     acc[s.service] = s
     return acc
@@ -79,13 +79,13 @@ export function validateComposeJSON(app: ComposeJSON) {
 }
 
 export async function getApp(filename: string, yaml: string) {
-  const composeFiles = getComposeFiles()
+  const composeFiles = await getComposeFiles()
   const app = YAML.parse(yaml) as ComposeJSON
   if (!validateComposeJSON(app)) {
     throw new Error(`Invalid YAML: \n${yaml}`)
   }
 
-  const state = await getAppsState()
+  const state = await getAppsState(composeFiles)
   const key = getServiceKey(app)
   const runtime = state[key]
   const title = getAppTitle(app)
@@ -106,7 +106,7 @@ export async function getApp(filename: string, yaml: string) {
 
 export async function getApps() {
   const configFolder = env.configFolder
-  const composeFiles = getComposeFiles()
+  const composeFiles = await getComposeFiles()
   const dir = await fs.readdir(configFolder)
   const ymls = dir.filter((d) => path.extname(d) === '.yml')
   const promises = ymls.map((y) => fs.readFile(path.join(configFolder, y), 'utf-8'))
@@ -118,7 +118,7 @@ export async function getApps() {
     }))
     .filter(({ app }) => validateComposeJSON(app))
 
-  const state = await getAppsState()
+  const state = await getAppsState(composeFiles)
   const appsData = apps.map(({ app, filename }) => {
     const key = getServiceKey(app)
     const runtime = state[key]
