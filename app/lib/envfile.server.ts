@@ -4,6 +4,10 @@ import fs from 'fs/promises'
 import path from 'path'
 import { emitter } from "./emitter.server"
 
+export function loadAppsEnv() {
+  dotenv.config({ path: path.join(env.configFolder, '.env') })
+}
+
 export function getComposeFiles() {
   const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
   const separator = configFolderENV.parsed?.COMPOSE_FILE_SEPARATOR || ':'

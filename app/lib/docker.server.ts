@@ -3,7 +3,7 @@ import { v2 as compose } from 'docker-compose'
 import path from 'path'
 import env from "./env.server"
 import { emitter } from "./emitter.server"
-import { addToDotEnv, removeFromDotEnv } from './envfile.server'
+import { addToDotEnv, loadAppsEnv, removeFromDotEnv } from './envfile.server'
 import fs from 'fs/promises'
 import Dockerode from 'dockerode'
 import { redirect } from '@remix-run/node'
@@ -70,6 +70,7 @@ type ComposeCommand = {
 
 export async function handleDockerOperation({ filename, key, op, state }: ComposeCommand) {
   try {
+    loadAppsEnv()
     if (op === 'restart') {
       const res = await compose.restartOne(key, {
         cwd: env.configFolder,
@@ -80,6 +81,7 @@ export async function handleDockerOperation({ filename, key, op, state }: Compos
     if (op === 'up') {
       const res = await compose.upOne(key, {
         cwd: env.configFolder,
+        // env: dotenv
         callback: (chunk) => emitter.emit('message', chunk.toString()),
       })
       return parseComposeResult(res)

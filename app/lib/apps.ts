@@ -4,7 +4,7 @@ import path from 'path'
 import YAML from 'yaml'
 import type { PsService} from "./docker.server"
 import { getPS } from "./docker.server"
-import { getComposeFiles } from "./envfile.server"
+import { getComposeFiles, loadAppsEnv } from "./envfile.server"
 
 export type XSundash = {
   title: string
@@ -65,6 +65,7 @@ export type ComposeJSONExtra = ComposeJSON & {
 }
 
 export async function getAppsState() {
+  loadAppsEnv()
   const configFolder = env.configFolder
   const { services } = await getPS(configFolder)
   return services.reduce((acc, s) => {
@@ -105,6 +106,7 @@ export async function getApp(filename: string, yaml: string) {
 }
 
 export async function getApps() {
+  loadAppsEnv()
   const configFolder = env.configFolder
   const composeFiles = getComposeFiles()
   const dir = await fs.readdir(configFolder)
