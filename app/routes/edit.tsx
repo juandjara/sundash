@@ -129,17 +129,17 @@ export default function TemplateEditor() {
 
   function getDefaults() {
     const xsundash = composeJSON["x-sundash"]
-    const key = xsundash?.service || Object.keys(composeJSON.services)[0]
-    const service = composeJSON.services[key] || {}
+    const key = xsundash?.service || Object.keys(composeJSON.services || {})[0]
+    const service = key ? (composeJSON.services[key] || {}) : undefined
     let port = xsundash?.port
     if (!port) {
-      const firstPort = String(service.ports?.[0]) || ''
+      const firstPort = String(service?.ports?.[0]) || ''
       const portParts = firstPort.split(':')
       port = portParts?.length ? Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', '')) : undefined
     }
     const url = xsundash?.url || `${app.name}.${baseAppsDomain}`
-    const proxyEnabled = xsundash?.proxyEnabled || !!service.labels?.['caddy']
-    const authEnabled = xsundash?.hasAuth || !!service.labels?.['caddy.authorize']
+    const proxyEnabled = xsundash?.proxyEnabled || !!service?.labels?.['caddy']
+    const authEnabled = xsundash?.hasAuth || !!service?.labels?.['caddy.authorize']
     
     return { port, url, service: key, proxyEnabled, authEnabled }
   }
@@ -181,7 +181,7 @@ export default function TemplateEditor() {
     return null
   }
 
-  const selectOptions = Object.keys(composeJSON.services).map((service) => {
+  const selectOptions = Object.keys(composeJSON.services || {}).map((service) => {
     return (
       <option key={service} value={service}>{service}</option>
     )
