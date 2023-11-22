@@ -5,7 +5,12 @@ import path from 'path'
 import { emitter } from "./emitter.server"
 
 export function loadAppsEnv() {
-  return dotenv.config({ path: path.join(env.configFolder, '.env') }) as NodeJS.ProcessEnv
+  const vars = dotenv.config({ path: path.join(env.configFolder, '.env') }) as NodeJS.ProcessEnv
+  return {
+    NODE_ENV: vars.NODE_ENV || 'development',
+    COMPOSE_PATH_SEPARATOR: vars.COMPOSE_PATH_SEPARATOR || ':',
+    COMPOSE_FILE: vars.COMPOSE_FILE || 'docker-compose.yml',
+  } as NodeJS.ProcessEnv
 }
 
 export function getComposeFiles() {
