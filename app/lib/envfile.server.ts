@@ -10,21 +10,21 @@ export function loadAppsEnv() {
 
 export function getComposeFiles() {
   const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
-  const separator = configFolderENV.parsed?.COMPOSE_FILE_SEPARATOR || ':'
+  const separator = configFolderENV.parsed?.COMPOSE_PATH_SEPARATOR || ':'
   const composeFiles = (configFolderENV.parsed?.COMPOSE_FILE || 'docker-compose.yml').split(separator)
   return composeFiles
 }
 
 export async function addToDotEnv(filename: string) {
   const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
-  const separator = configFolderENV.parsed?.COMPOSE_FILE_SEPARATOR || ':'
+  const separator = configFolderENV.parsed?.COMPOSE_PATH_SEPARATOR || ':'
   const fileListText = configFolderENV.parsed?.COMPOSE_FILE || ''
   const composeFiles = new Set(fileListText.split(separator))
   composeFiles.add(filename)
 
   const newDotEnv = Object.entries({
     ...configFolderENV.parsed,
-    COMPOSE_FILE_SEPARATOR: separator,
+    COMPOSE_PATH_SEPARATOR: separator,
     COMPOSE_FILE: Array.from(composeFiles).join(separator),
   })
     .map(([key, value]) => `${key}=${value}`)
@@ -36,14 +36,14 @@ export async function addToDotEnv(filename: string) {
 
 export async function removeFromDotEnv(filename: string) {
   const configFolderENV = dotenv.config({ path: path.join(env.configFolder, '.env') })
-  const separator = configFolderENV.parsed?.COMPOSE_FILE_SEPARATOR || ':'
+  const separator = configFolderENV.parsed?.COMPOSE_PATH_SEPARATOR || ':'
   const fileListText = configFolderENV.parsed?.COMPOSE_FILE || ''
   const composeFiles = new Set(fileListText.split(separator))
   composeFiles.delete(filename)
 
   const newDotEnv = Object.entries({
     ...configFolderENV.parsed,
-    COMPOSE_FILE_SEPARATOR: separator,
+    COMPOSE_PATH_SEPARATOR: separator,
     COMPOSE_FILE: Array.from(composeFiles).join(separator),
   })
     .map(([key, value]) => `${key}=${value}`)
