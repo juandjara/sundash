@@ -141,20 +141,20 @@ export async function getApps() {
 }
 
 export function getServiceKey(app: ComposeJSON) {
-  const appKey = app['x-sundash']?.service
-  const defaultKey = Object.keys(app.services || {})[0]
+  const appKey = app?.['x-sundash']?.service
+  const defaultKey = Object.keys(app?.services || {})[0]
   return appKey || defaultKey
 }
 
 export function getAppTitle(app: ComposeJSON) {
-  const appTitle = app['x-sundash']?.title
+  const appTitle = app?.['x-sundash']?.title
   const key = getServiceKey(app)
-  const defaultTitle = app.services[key].container_name || key
+  const defaultTitle = app?.services[key]?.container_name || key
   return appTitle || defaultTitle
 }
 
 export function getAppLogo(app: ComposeJSON) {
-  return app['x-sundash']?.logo || `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/${getServiceKey(app)}.png`
+  return app?.['x-sundash']?.logo || `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/${getServiceKey(app)}.png`
 }
 
 export async function saveApp({ name, compose }: { name: string; compose: string }) {
@@ -166,7 +166,7 @@ export async function saveApp({ name, compose }: { name: string; compose: string
 }
 
 export function getStateColor(app: ComposeJSONExtra) {
-  if (!app.runtime) {
+  if (!app?.runtime) {
     return 'bg-zinc-300'
   }
   if (app.runtime?.state === 'up') {
@@ -176,7 +176,7 @@ export function getStateColor(app: ComposeJSONExtra) {
 }
 
 export function getStateTitle(app: ComposeJSONExtra) {
-  if (!app.runtime) {
+  if (!app?.runtime) {
     return 'Not created'
   }
   if (app.runtime?.state === 'up') {
