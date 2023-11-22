@@ -89,6 +89,7 @@ export async function handleDockerOperation({ filename, key, op, state }: Compos
     if (op === 'down') {
       const res = await compose.down({
         cwd: env.configFolder,
+        config: filename,
         callback: (chunk) => emitter.emit('message', chunk.toString()),
       })
       return parseComposeResult(res)
@@ -103,6 +104,7 @@ export async function handleDockerOperation({ filename, key, op, state }: Compos
     if (op === 'kill') {
       const res = await compose.kill({
         cwd: env.configFolder,
+        config: filename,
         callback: (chunk) => emitter.emit('message', chunk.toString()),
       })
       return parseComposeResult(res)
@@ -124,6 +126,7 @@ export async function handleDockerOperation({ filename, key, op, state }: Compos
       if (state) {
         await compose.down({
           cwd: env.configFolder,
+          config: filename,
           commandOptions: ['--volumes'],
           callback: (chunk) => emitter.emit('message', chunk.toString()),
         })
