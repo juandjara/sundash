@@ -8,12 +8,9 @@ import { getComposeFiles } from "./envfile.server"
 
 export type XSundash = {
   title: string
-  logo: string
-  proxyEnabled: boolean
-  hasAuth: boolean
+  logo?: string
   service: string
-  port: number
-  url: string
+  hasAuth?: boolean
 }
 
 export type ComposeJSON = {
@@ -45,7 +42,7 @@ export type ComposeJSON = {
       logging?: string
     }
   }
-  netowrks?: {
+  networks?: {
     [key: string]: {
       external: boolean
     }
@@ -86,10 +83,10 @@ export async function getApp(filename: string, yaml: string) {
   }
 
   const state = await getAppsState(composeFiles)
-  const key = getServiceKey(app)
-  const runtime = state[key]
   const title = getAppTitle(app)
   const logo = getAppLogo(app)
+  const key = getServiceKey(app)
+  const runtime = state[key]
   const appData = {
     ...app,
     filename,

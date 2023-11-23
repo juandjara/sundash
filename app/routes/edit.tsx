@@ -1,25 +1,24 @@
 import { ArrowLeftIcon } from "@heroicons/react/20/solid"
 import { redirect, type ActionArgs, type LoaderArgs } from "@remix-run/node"
-import { Form, Link, useFetcher, useLoaderData, useNavigate, useNavigation } from "@remix-run/react"
+import { Form, useFetcher, useLoaderData, useNavigate, useNavigation } from "@remix-run/react"
 import clsx from "clsx"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import YAML from 'yaml'
 import Logo from "~/components/Logo"
 import Layout from "~/components/layout"
-import type { ComposeJSON} from "~/lib/apps"
+import type { ComposeJSON, XSundash } from "~/lib/apps"
 import { getApp, saveApp } from "~/lib/apps"
 import { getComposeTemplate, getTemplate } from "~/lib/appstore"
 import { checkNetworkExists, readComposeFile } from "~/lib/docker.server"
-import { editComposeForProxy, editComposeForSundash } from "~/lib/editor"
+import { addProxyConfig, editComposeForSundash } from "~/lib/editor"
 import env from "~/lib/env.server"
 import { buttonCN, inputCN } from "~/lib/styles"
 
 const blankApp = {
   name: 'app',
   title: 'new app',
+  key: 'app',
   logo: '',
-  description: '',
-  category: '',
 }
 
 const blankYaml = `version: '3'
@@ -37,8 +36,7 @@ export async function loader({ request }: LoaderArgs) {
   const base = {
     source,
     networkExists,
-    proxyNetwork: env.dockerProxyNetwork,
-    baseAppsDomain: env.baseAppsDomain,
+    env,
   }
 
   if (source === 'appstore') {
@@ -100,70 +98,44 @@ export default function TemplateEditor() {
     composeYaml,
     source,
     networkExists,
-    proxyNetwork,
-    baseAppsDomain
+    env,
   } = useLoaderData<typeof loader>()
   const navigate = useNavigate()
   const [text, setText] = useState(composeYaml)
   const composeJSON = useMemo(() => tryParseYaml(text), [text])
-  const formRef = useRef<HTMLFormElement>(null)
-  const [logo, setLogo] = useState(app.logo)
-  const [proxyEnabled, setProxyEnabled] = useState(() => getDefaults().proxyEnabled)
+  const serviceKeys = Object.keys(composeJSON.services || {})
+
+  const title = composeJSON['x-sundash']?.title || app.title
+  const logo = composeJSON['x-sundash']?.logo || app.logo
+  const service = composeJSON['x-sundash']?.service || app.key || serviceKeys[0]
+  const hasAuth = composeJSON['x-sundash']?.hasAuth || !!composeJSON.services?.[service]?.labels?.['caddy.authorize']
+
   const transition = useNavigation()
   const busy = transition.state !== 'idle'
 
   useEffect(() => {
-    if (formRef.current) {
-      updateComposeFile({
-        preventDefault: () => {},
-        currentTarget: formRef.current,
-        target: formRef.current,
-      } as any)
+    // if service is not one of serviceKeys, set it to the first one
+    if (serviceKeys.length && !serviceKeys.includes(service)) {
+      updateXSundash({ service: serviceKeys[0] })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [serviceKeys, service])
 
   function resetForm() {
     setText(composeYaml)
   }
 
-  function getDefaults() {
-    const xsundash = composeJSON["x-sundash"]
-    const key = xsundash?.service || Object.keys(composeJSON.services || {})[0]
-    const service = key ? (composeJSON.services[key] || {}) : undefined
-    let port = xsundash?.port
-    if (!port) {
-      const firstPort = String(service?.ports?.[0]) || ''
-      const portParts = firstPort.split(':')
-      port = portParts?.length ? Number(portParts[portParts.length - 1].replace('/tcp', '').replace('/udp', '')) : undefined
-    }
-    const url = xsundash?.url || `${app.name}.${baseAppsDomain}`
-    const proxyEnabled = xsundash?.proxyEnabled || !!service?.labels?.['caddy']
-    const authEnabled = xsundash?.hasAuth || !!service?.labels?.['caddy.authorize']
-    
-    return { port, url, service: key, proxyEnabled, authEnabled }
+  function updateXSundash(config: Partial<XSundash>) {
+    const newConfig = { title, logo, service, hasAuth, ...config }
+    const newJSON = editComposeForSundash(composeJSON, newConfig)
+    const newYaml = YAML.stringify(newJSON)
+    setText(newYaml.replace(/\n(\w)/g, '\n\n$1'))
   }
 
-  function updateComposeFile(ev: React.FormEvent<HTMLFormElement> | React.FocusEvent<HTMLFormElement>) {
-    ev.preventDefault()
-    const fd = new FormData(ev.currentTarget)
-    const xsundash = {
-      title: fd.get('title') as string,
-      logo: fd.get('logoURL') as string,
-      proxyEnabled: fd.get('proxyEnabled') === 'on',
-      hasAuth: fd.get('hasAuth') === 'on',
-      service: fd.get('service') as string,
-      port: Number(fd.get('port') || NaN),
-      url: fd.get('url') as string,
-    }
-
-    const withSundashConfig = editComposeForSundash(composeJSON, xsundash)
-    const withProxyConfig = editComposeForProxy(withSundashConfig, {
-      ...xsundash,
-      proxyNetwork,
-    })
-
-    const newYaml = YAML.stringify(withProxyConfig)
+  function applyProxyConfig() {
+    const config = { title, logo, service, hasAuth }
+    const newJSON = addProxyConfig(composeJSON, config, env)
+    const newYaml = YAML.stringify(newJSON)
     setText(newYaml.replace(/\n(\w)/g, '\n\n$1'))
   }
 
@@ -181,11 +153,6 @@ export default function TemplateEditor() {
     return null
   }
 
-  const selectOptions = Object.keys(composeJSON.services || {}).map((service) => {
-    return (
-      <option key={service} value={service}>{service}</option>
-    )
-  })
 
   return (
     <Layout>
@@ -197,16 +164,11 @@ export default function TemplateEditor() {
           <h2 className="text-3xl font-bold mb-1">
             {source === 'file' ? 'Edit' : 'Install'}{' '}{app.title || app.name}
           </h2>
-          <p className="text-xl">Edit this docker compose template and deploy it on your server.</p>
+          <p className="text-xl">Here you can edit and review your docker compose template before deploying it to your server.</p>
         </div>
       </div>
       <div className="flex flex-wrap items-start gap-6 mt-6 mb-3">
-        <form
-          onSubmit={updateComposeFile}
-          onBlur={updateComposeFile}
-          className="max-w-md w-full"
-          ref={formRef}
-        >
+        <div className="max-w-md w-full">
           <div className="mb-6">
             <label className="text-zinc-500 mb-1 block">Title</label>
             <input 
@@ -214,7 +176,8 @@ export default function TemplateEditor() {
               type="text"
               name="title"
               id="title"
-              defaultValue={app.title}
+              value={title}
+              onChange={(e) => updateXSundash({ title: e.target.value })}
             />
           </div>
           <div className="mb-6 flex items-center gap-3">
@@ -226,7 +189,7 @@ export default function TemplateEditor() {
                 name="logoURL"
                 id="logoURL"
                 value={logo}
-                onChange={(e) => setLogo(e.target.value)}
+                onChange={(e) => updateXSundash({ logo: e.target.value })}
               />
             </div>
             <Logo
@@ -237,37 +200,39 @@ export default function TemplateEditor() {
               className="w-16 h-16 block object-contain rounded-full shadow shadow-pink-200 p-0.5"
             />
           </div>
-          <p className="mt-8 text-lg">Expose configuration</p>
-          <hr className="mt-2 mb-3" />
-          {!networkExists && (
-            <div className="mb-6 text-sm">
-              Proxy network <strong>web</strong> does not exist
-              <button
-                type="button"
-                onClick={createNetwork}
-                aria-disabled={createNetworkFetcher.state !== 'idle'}
-                className={clsx('ml-2', buttonCN.small, buttonCN.transparent)}
-              >
-                {createNetworkFetcher.state === 'idle' ? 'Create network' : 'Creating...'}
-              </button>
-            </div>
-          )}
-          <fieldset aria-disabled={!networkExists} className="aria-disabled:opacity-50 aria-disabled:pointer-events-none">            
+          <p className="mt-8 text-lg mb-3 ml-1">Proxy configuration</p>
+          <div className="p-3 rounded-md border border-zinc-300">
+            {!networkExists && (
+              <div className="mb-6 text-sm">
+                Proxy network <strong>web</strong> does not exist
+                <button
+                  type="button"
+                  onClick={createNetwork}
+                  aria-disabled={createNetworkFetcher.state !== 'idle'}
+                  className={clsx('ml-2', buttonCN.small, buttonCN.transparent)}
+                >
+                  {createNetworkFetcher.state === 'idle' ? 'Create network' : 'Creating...'}
+                </button>
+              </div>
+            )}
             <div className="mb-6">
-              <label className="text-zinc-500 flex items-center" htmlFor="proxyEnabled">
-                <input
-                  type="checkbox"
-                  name="proxyEnabled"
-                  id="proxyEnabled"
-                  className="mr-2"
-                  checked={proxyEnabled}
-                  onChange={(e) => setProxyEnabled(e.target.checked)}
-                />
-                <span>Expose App</span>
+              <label className="text-zinc-500 mb-1 block" htmlFor="service">
+                Select a compose service to proxy
               </label>
+              <select
+                className={clsx('bg-zinc-50 p-[6px]', inputCN)}
+                name="service"
+                id="service"
+                required
+                value={service}
+                onChange={(e) => updateXSundash({ service: e.target.value })}
+              >
+                {serviceKeys.length === 0 && (
+                  <option value="">No services found</option>
+                )}
+                {serviceKeys.map((key) => <option key={key} value={key}>{key}</option>)}
+              </select>
             </div>
-          </fieldset>
-          <fieldset aria-disabled={!proxyEnabled} className="aria-disabled:opacity-50 aria-disabled:pointer-events-none">
             <div className="mb-6">
               <label className="text-zinc-500 flex items-center" htmlFor="hasAuth">
                 <input
@@ -275,63 +240,18 @@ export default function TemplateEditor() {
                   name="hasAuth"
                   id="hasAuth"
                   className="mr-2"
-                  defaultChecked={getDefaults().authEnabled}
+                  checked={hasAuth}
+                  onChange={(e) => updateXSundash({ hasAuth: e.target.checked })}
                 />
-                <span>Exposed App requires authentication</span>
+                <span>Protect with authentication</span>
               </label>
             </div>
-            <div className="mb-6">
-              <label className="text-zinc-500 mb-1 block" htmlFor="service">
-                Select a compose service
-              </label>
-              <select className={clsx('bg-zinc-50 p-[6px]', inputCN)} name="service" id="service" required>
-                {selectOptions}
-              </select>
-            </div>
-            <div className="mb-6">
-              <label className="text-zinc-500 mb-1 block" htmlFor="port">
-                Internal container port
-              </label>
-              <input
-                className={clsx('bg-zinc-50 px-2 py-1', inputCN)}
-                type="number"
-                name="port"
-                id="port"
-                placeholder="80"
-                required
-                defaultValue={getDefaults().port}
-              />
-            </div>
-            <div className="mb-6">
-              <label className="text-zinc-500 mb-1 block" htmlFor="url">
-                Exposed URL
-              </label>
-              <input
-                className={clsx('bg-zinc-50 px-2 py-1', inputCN)}
-                type="url"
-                name="url"
-                id="url"
-                required
-                placeholder={`app.${baseAppsDomain}`}
-                defaultValue={getDefaults().url}
-              />
-            </div>
-          </fieldset>
-        </form>
-        <Form method="POST" className="flex-grow">
-          <div className="mb-5">
-            <label className="text-zinc-500 mb-1 block" htmlFor="name">Compose file</label>
-            <input
-              className={clsx('bg-zinc-50 px-2 py-1', inputCN)}
-              type="text"
-              name="name"
-              id="name"
-              defaultValue={`${app.name || app.title}.yml`}
-            />
-            <p className="text-xs mt-2 text-zinc-600">
-              This will create a file with this name in your <Link className="underline" to='/config'>config directory</Link>.
-            </p>
+            <button onClick={applyProxyConfig} className={clsx(buttonCN.small, buttonCN.outline)}>
+              Add proxy configuration
+            </button>
           </div>
+        </div>
+        <Form method="POST" className="flex-grow mt-6">
           <div className="mb-4">
             <textarea
               className={clsx('h-[500px] bg-zinc-50 font-mono p-3', inputCN)}

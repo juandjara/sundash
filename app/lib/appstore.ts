@@ -41,6 +41,7 @@ export async function getTemplate({ query, category, open }: GetTemplatesParams 
   const name = slugify(app.name || app.title)
   return {
     ...app,
+    key: name,
     name,
   }
 }
