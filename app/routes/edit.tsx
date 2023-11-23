@@ -16,7 +16,7 @@ import { buttonCN, inputCN } from "~/lib/styles"
 
 const blankApp = {
   name: 'app',
-  title: 'new app',
+  title: '',
   key: 'app',
   logo: '',
 }
@@ -167,7 +167,8 @@ export default function TemplateEditor() {
           <p className="text-xl">Here you can edit and review your docker compose template before deploying it to your server.</p>
         </div>
       </div>
-      <div className="flex flex-wrap items-start gap-6 mt-6 mb-3">
+      <Form method="POST" className="flex flex-wrap items-start gap-6 mt-6 mb-3">
+        <input type="hidden" name="filename" value={`${service}.yml`} />
         <div className="max-w-md w-full">
           <div className="mb-6">
             <label className="text-zinc-500 mb-1 block">Title</label>
@@ -178,6 +179,7 @@ export default function TemplateEditor() {
               id="title"
               value={title}
               onChange={(e) => updateXSundash({ title: e.target.value })}
+              required
             />
           </div>
           <div className="mb-6 flex items-center gap-3">
@@ -251,7 +253,7 @@ export default function TemplateEditor() {
             </button>
           </div>
         </div>
-        <Form method="POST" className="flex-grow mt-6">
+        <div className="flex-grow mt-6">
           <div className="mb-4">
             <textarea
               className={clsx('h-[500px] bg-zinc-50 font-mono p-3', inputCN)}
@@ -282,8 +284,8 @@ export default function TemplateEditor() {
             <div className="flex-grow"></div>
             <button type="button" onClick={() => navigate(-1)} className={clsx(buttonCN.normal, buttonCN.delete)}>Cancel</button>
           </div>
-        </Form>
-      </div>
+        </div>
+      </Form>
     </Layout>
   )
 }
