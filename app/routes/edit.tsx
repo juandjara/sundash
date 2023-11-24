@@ -75,7 +75,7 @@ export async function loader({ request }: LoaderArgs) {
 
 export async function action({ request }: ActionArgs) {
   const fd = await request.formData()
-  const name = fd.get('name') as string
+  const name = fd.get('filename') as string
   const compose = fd.get('compose') as string
   const fullName = name.endsWith('.yml') ? name : `${name}.yml`
   await saveApp({ name: fullName, compose })
