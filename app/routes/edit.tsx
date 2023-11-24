@@ -248,7 +248,7 @@ export default function TemplateEditor() {
                 <span>Protect with authentication</span>
               </label>
             </div>
-            <button onClick={applyProxyConfig} className={clsx(buttonCN.small, buttonCN.outline)}>
+            <button type="button" onClick={applyProxyConfig} className={clsx(buttonCN.small, buttonCN.outline)}>
               Add proxy configuration
             </button>
           </div>
