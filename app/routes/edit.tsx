@@ -271,7 +271,7 @@ export default function TemplateEditor() {
               aria-disabled={busy}
               className={clsx(buttonCN.normal, buttonCN.primary)}
             >
-              {source === 'file' ? 'Save' : 'Deploy'}
+              Save
             </button>
             <button
               type="button"
