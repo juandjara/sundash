@@ -33,7 +33,7 @@ export default function TemplateDetail({ template }: { template: Template }) {
   }
 
   return (
-    <div className="relative ml-2 p-2 bg-zinc-50 w-full">
+    <div className="relative p-2 bg-zinc-50 w-full">
       <button onClick={close} className={clsx('block w-min', buttonCN.normal, buttonCN.icon, buttonCN.transparent)}>
         <ArrowLeftIcon className='w-5 h-5' />
       </button>

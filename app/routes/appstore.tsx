@@ -59,8 +59,8 @@ export default function AppStore() {
         <h2 className="text-3xl font-bold mb-1">App Store</h2>
         <p className="text-xl">Browse and install apps from the community.</p>
       </div>
-      <div className="flex items-stretch">
-        <div className="w-full">
+      <div className="flex items-stretch gap-2">
+        <div className="hidden md:block w-full">
           <p className="text-xl font-medium mb-4">{data.length} templates</p>
           <Form method="get" className="mb-4 flex items-start gap-3">
             <div className="relative w-full">
@@ -114,7 +114,6 @@ export default function AppStore() {
           </ul>
         </div>
         {templateDetail && <TemplateDetail template={templateDetail} />}
-        <div></div>
       </div>
     </Layout>
   )
