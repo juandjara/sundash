@@ -60,7 +60,7 @@ export default function AppStore() {
         <p className="text-xl">Browse and install apps from the community.</p>
       </div>
       <div className="flex items-stretch gap-2">
-        <div className="hidden md:block w-full">
+        <div className={clsx({ 'hidden md:block ': !!templateDetail }, 'w-full')}>
           <p className="text-xl font-medium mb-4">{data.length} templates</p>
           <Form method="get" className="mb-4 flex items-start gap-3">
             <div className="relative w-full">
