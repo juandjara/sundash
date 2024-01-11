@@ -1,2 +1,4 @@
 import { EventEmitter } from "node:events"
-export let emitter = new EventEmitter()
+import { remember } from '@epic-web/remember'
+
+export let emitter = remember('emitter', () => new EventEmitter())

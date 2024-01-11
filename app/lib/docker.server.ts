@@ -43,6 +43,21 @@ export async function getLogs(service: string) {
   return msg
 }
 
+export async function composeLogs(project: string, configFiles: string[], envFiles: string[] = []) {
+  compose.logs([], {
+    config: configFiles,
+    composeOptions: envFiles.length ? ['--env-file', ...envFiles] : [],
+    commandOptions: ['--follow'],
+    callback: (chunk) => emitter.emit(`log:${project}`, chunk.toString()),
+  })
+  const res = await compose.logs([], {
+    config: configFiles,
+    composeOptions: envFiles.length ? ['--env-file', ...envFiles] : [],
+  })
+  const msg = parseComposeResult(res)
+  return msg
+}
+
 export async function streamLogs(service: string) {
   const res = await compose.logs(service, {
     cwd: env.configFolder,
@@ -182,4 +197,21 @@ export async function createNetwork(network: string) {
   await docker.createNetwork({
     Name: network,
   })
+}
+
+export async function getAllContainers() {
+  const docker = new Dockerode({
+    socketPath: '/var/run/docker.sock',
+  })
+  
+  const containers = await docker.listContainers({ all: true })
+  return containers
+}
+
+export async function getComposeConfig(filenames: string[], envFiles: string[] = []) {
+  const res = await compose.config({
+    config: filenames,
+    composeOptions: envFiles.length ? ['--env-file', ...envFiles] : []
+  })
+  return res.out
 }

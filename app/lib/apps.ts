@@ -3,8 +3,9 @@ import fs from 'fs/promises'
 import path from 'path'
 import YAML from 'yaml'
 import type { PsService} from "./docker.server"
-import { getPS } from "./docker.server"
+import { getAllContainers, getComposeConfig, getPS } from "./docker.server"
 import { getComposeFiles } from "./envfile.server"
+import type Dockerode from "dockerode"
 
 export type XSundash = {
   title: string
@@ -101,6 +102,77 @@ export async function getApp(filename: string, yaml: string) {
   return appData as ComposeJSONExtra
 }
 
+type Runtime = {
+  service: string
+  status: string
+  state: string
+}
+
+export type Project = {
+  dir: string
+  project: string
+  configFiles: string[]
+  envFiles: string[]
+  containers: Record<string, Dockerode.ContainerInfo>
+  config: ComposeJSON
+  title: string
+  logo: string
+  key: string
+  runtime: Runtime
+}
+
+type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
+
+export async function getAppsFromContainers() {
+  const containers = await getAllContainers()
+  const groups: Record<string, Optional<Project, 'runtime'>> = {}
+  for (const container of containers) {
+    const service = container.Labels['com.docker.compose.service']
+    const project = container.Labels['com.docker.compose.project']
+    const dir = container.Labels['com.docker.compose.project.working_dir']
+    const configFiles = (container.Labels['com.docker.compose.project.config_files'] || '').split(',').filter(Boolean)
+    const envFiles = (container.Labels['com.docker.compose.project.environment_file'] || '').split(',').filter(Boolean)
+
+    if (!groups[project]) {
+      // it is supposed that files contains only references to valid compose files since we get it from docker
+      const yamlText = await getComposeConfig(configFiles, envFiles)
+      const config = YAML.parse(yamlText) as ComposeJSON
+      const title = getAppTitle(config)
+      const logo = getAppLogo(config)
+      const key = getServiceKey(config)
+
+      groups[project] = {
+        dir,
+        project,
+        configFiles,
+        envFiles,
+        containers: {},
+        config,
+        title,
+        logo,
+        key,
+        runtime: undefined,
+      }
+    }
+    groups[project].containers[service] = container
+  }
+
+  const projects = Object.values(groups)
+
+  for (const project of projects) {
+    if (project.containers[project.key]) {
+      const { State, Status } = project.containers[project.key]
+      project.runtime = {
+        service: project.key,
+        state: State,
+        status: Status,
+      }
+    }
+  }
+
+  return projects as Project[]
+}
+
 export async function getApps() {
   const configFolder = env.configFolder
   const composeFiles = await getComposeFiles()
@@ -160,23 +232,40 @@ export async function saveApp({ name, compose }: { name: string; compose: string
   await fs.writeFile(fullPath, compose)
 }
 
-export function getStateColor(app: ComposeJSONExtra) {
-  if (!app?.runtime) {
+export type ContainerState = 'created' | 'restarting' | 'running' | 'paused' | 'exited' | 'dead' | undefined
+
+export function getStateColor(state: ContainerState) {
+  if (!state || state === 'created') {
     return 'bg-zinc-300'
   }
-  if (app.runtime?.state === 'up') {
+  if (state === 'exited') {
+    return 'bg-red-100'
+  }
+  if (state === 'running') {
     return 'bg-green-500'
+  }
+  if (state === 'paused') {
+    return 'bg-green-100'
+  }
+  if (state === 'restarting') {
+    return 'bg-yellow-500'
   }
   return 'bg-red-500'
 }
 
-export function getStateTitle(app: ComposeJSONExtra) {
+export function getStateTitle(app: Project) {
   if (!app?.runtime) {
     return 'Not created'
   }
-  if (app.runtime?.state === 'up') {
+  if (app.runtime?.state === 'running') {
     return 'Running'
   }
   return 'Not running'
 }
 
+export function getLogoFromContainer(container: Dockerode.ContainerInfo) {
+  const labels = container?.Labels || {}
+  const service = labels['com.docker.compose.service']
+  const logo = labels['dev.sundash.logo'] || `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/${service}.png`
+  return logo
+}

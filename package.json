@@ -9,6 +9,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@epic-web/remember": "^1.0.2",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
     "@remix-run/node": "1.19.3",
@@ -16,6 +17,7 @@
     "@remix-run/serve": "1.19.3",
     "@types/dockerode": "^3.3.23",
     "@types/markdown-it": "^13.0.4",
+    "ansi-to-react": "^6.1.6",
     "clsx": "^2.0.0",
     "docker-compose": "0.24.3",
     "dockerode": "^4.0.0",
