@@ -90,7 +90,7 @@ export async function getComposeLogs(project: BaseProject) {
     config: project.configFiles,
     composeOptions: project.envFiles.length ? ['--env-file', ...project.envFiles] : [],
     commandOptions: ['--follow'],
-    callback: (chunk) => emitter.emit(`log:${project}`, chunk.toString()),
+    callback: (chunk) => emitter.emit(`log:${project.key}`, chunk.toString()),
   })
   const res = await compose.logs([], {
     config: project.configFiles,
@@ -116,6 +116,7 @@ export async function handleComposeOperation(project: BaseProject, op: ComposeOp
     const res = await method({
       config: project.configFiles,
       composeOptions: project.envFiles.length ? ['--env-file', ...project.envFiles] : [],
+      callback: (chunk) => emitter.emit(`log:${project.key}`, chunk.toString()),
     })
     const msg = parseComposeResult(res)
     return msg
