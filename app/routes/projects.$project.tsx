@@ -1,50 +1,52 @@
-import { ArrowDownTrayIcon, ArrowLeftIcon, ArrowUpTrayIcon, CloudArrowDownIcon, DocumentIcon } from "@heroicons/react/24/outline"
-import type { LoaderArgs } from "@remix-run/node"
-import { Link, useLoaderData } from "@remix-run/react"
-import clsx from "clsx"
-import type Dockerode from "dockerode"
-import Logo from "~/components/Logo"
-import Tooltip from "~/components/Tooltip"
-import Layout from "~/components/layout"
-import { type ContainerState, getLogoFromContainer, getStateColor, type Project } from "~/lib/apps"
-import { composeLogs, getAllContainers } from "~/lib/docker.server"
-import { buttonCN } from "~/lib/styles"
-import path from 'path'
 import { ArrowPathIcon } from "@heroicons/react/20/solid"
+import { StopIcon, ArrowDownTrayIcon, ArrowLeftIcon, ArrowUpTrayIcon, CloudArrowDownIcon, DocumentIcon, PlayIcon } from "@heroicons/react/24/outline"
+import { json, type LoaderArgs } from "@remix-run/node"
+import { Form, Link, useLoaderData } from "@remix-run/react"
+import clsx from "clsx"
+import path from 'path'
 import { useEffect, useState } from "react"
 import { useEventSource } from "remix-utils"
 import LogDisplay from "~/components/LogDisplay"
+import Logo from "~/components/Logo"
+import Tooltip from "~/components/Tooltip"
+import Layout from "~/components/layout"
+import { getComposeLogs, getProjectFromKey, handleComposeOperation, type Project } from "~/lib/compose.server"
+import { getLogoFromContainer, getStateColor, getTitleFromContainer } from "~/lib/docker.util"
+import { buttonCN } from "~/lib/styles"
 
 export async function loader({ params }: LoaderArgs) {
-  const urlProject = params.project!
-  const containers = await getAllContainers()
-  const projectContainers = containers.filter((container) => container.Labels['com.docker.compose.project'] === urlProject)
-  const first = projectContainers[0]
+  const key = params.project!
+  const project = await getProjectFromKey(key)
+  const logs = await getComposeLogs(project)
 
-  if (!first) {
-    throw new Response('Project not found', { status: 404 })
+  return {
+    logs,
+    project: {
+      ...project,
+      configFiles: project.configFiles.map((file) => path.relative(project.dir, file)),
+      envFiles: project.envFiles.map((file) => path.relative(project.dir, file)),
+    }
   }
+}
 
-  const dir = first.Labels['com.docker.compose.project.working_dir']
-  const configFiles = (first.Labels['com.docker.compose.project.config_files'] || '')
-    .split(',')
-    .filter(Boolean)
+export async function action({ request, params }: LoaderArgs) {
+  const key = params.project!
+  const project = await getProjectFromKey(key)
 
-  const envFiles = (first.Labels['com.docker.compose.project.environment_file'] || '')
-    .split(',')
-    .filter(Boolean)
+  const fd = await request.formData()
+  const op = fd.get('op') as any
 
-  const logs = await composeLogs(urlProject, configFiles, envFiles)
+  try {
+    const res = await handleComposeOperation(project, op)
+    return json({ msg: res })
+  } catch (err) {
+    if (err instanceof Response) {
+      throw err
+    }
 
-  const project = {
-    dir,
-    project: urlProject,
-    configFiles: configFiles.map((file) => path.relative(dir, file)),
-    envFiles: envFiles.map((file) => path.relative(dir, file)),
-    containers: projectContainers,
+    const msg = String((err as Error).message)
+    return json({ error: msg })
   }
-
-  return { project, logs }
 }
 
 function useLogs(id: string, initialLogs = '') {
@@ -59,8 +61,9 @@ function useLogs(id: string, initialLogs = '') {
 }
 
 export default function ProjectDetail() {
-  const { project, logs: initialLogs } = useLoaderData() as { project: { containers: Dockerode.ContainerInfo[] } & Pick<Project, 'dir' | 'project' | 'configFiles' | 'envFiles'>; logs: string }
-  const logs = useLogs(project.project, initialLogs)
+  const { project, logs: initialLogs } = useLoaderData() as { project: Project; logs: string }
+  const logs = useLogs(project.key, initialLogs)
+  const isRunning = project.containers.some((container) => container.State === 'running')
 
   return (
     <Layout>
@@ -71,8 +74,8 @@ export default function ProjectDetail() {
         </button>
       </Link>
       <section className="flex flex-wrap gap-2 align-baseline my-4 md:px-2">
-        <p className="capitalize text-2xl font-semibold flex-grow">{project.project}</p>
-        <div className="flex flex-wrap items-center gap-2">
+        <p className="capitalize text-2xl font-semibold flex-grow">{project.key}</p>
+        <Form method='POST' className="flex flex-wrap items-center gap-2">
           <button name="op" value="up" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
             <ArrowUpTrayIcon className="w-5 h-5" />
             <p>Up</p>
@@ -89,7 +92,18 @@ export default function ProjectDetail() {
             <ArrowPathIcon className="w-5 h-5" />
             <p>Restart</p>
           </button>
-        </div>
+          {isRunning ? (
+            <button name="op" value="stop" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+              <StopIcon className="w-5 h-5" />
+              <p>Stop</p>
+            </button>
+          ) : (
+            <button name="op" value="start" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+              <PlayIcon className="w-5 h-5" />
+              <p>Start</p>
+            </button>
+          )}
+        </Form>
       </section>
       <div className="flex flex-wrap">
         <div className="flex-auto basis-1/2">
@@ -97,7 +111,7 @@ export default function ProjectDetail() {
             <h3 className="text-xl font-semibold flex-grow mb-2">Containers</h3>
             <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 my-4">
               {project.containers.map((container) => (
-                <AppCard app={appFromContainer(container)} key={container.Id} />
+                <ContainerCard container={container} key={container.Id} />
               ))}
             </ul>
           </section>
@@ -107,7 +121,7 @@ export default function ProjectDetail() {
               {project.configFiles.map((file, i) => (
                 <li key={file} className="flex">
                   <Link
-                    to={`/projects/${project.project}/edit?i=${i}&type=config`}
+                    to={`/projects/${project.key}/edit?i=${i}&type=config`}
                     className="flex gap-2 py-1 pr-2 items-center rounded-md hover:bg-gray-100 transition-colors"
                   >
                     <DocumentIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />
@@ -124,7 +138,7 @@ export default function ProjectDetail() {
                 {project.envFiles.map((file, i) => (
                   <li key={file} className="flex">
                     <Link
-                      to={`/projects/${project.project}/edit?i=${i}&type=env`}
+                      to={`/projects/${project.key}/edit?i=${i}&type=env`}
                       className="flex gap-2 py-1 pr-2 items-center rounded-md hover:bg-gray-100 transition-colors"
                     >
                       <DocumentIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />
@@ -145,29 +159,7 @@ export default function ProjectDetail() {
   )
 }
 
-type ContainerCard = {
-  id: string
-  service: string
-  title: string
-  logo: string
-  state: ContainerState
-  status: string
-}
-
-function appFromContainer(container: Dockerode.ContainerInfo) {
-  const service = container.Labels['com.docker.compose.service']
-  const title = service || container.Names[0]
-  return {
-    id: container.Id,
-    service,
-    title,
-    logo: getLogoFromContainer(container),
-    state: container.State as ContainerState,
-    status: container.Status,
-  } satisfies ContainerCard
-}
-
-function AppCard({ app }: { app: ContainerCard }) {
+function ContainerCard({ container }: { container: Project['containers'][number] }) {
   return (
     <li
       className={clsx(
@@ -175,23 +167,23 @@ function AppCard({ app }: { app: ContainerCard }) {
         'bg-white relative group flex flex-col place-items-center border border-zinc-200 py-3 rounded-xl w-40'
       )}
     >
-      <Link to={`/containers/${app.id}`} className="absolute inset-0">
-        <span className="sr-only">{app.title}</span>
+      <Link to={`/containers/${container.Id}`} className="absolute inset-0">
+        <span className="sr-only">{getTitleFromContainer(container)}</span>
       </Link>
       <div className="absolute top-2 left-2">              
-        <Tooltip title={app.status}>
+        <Tooltip title={container.Status}>
           <div className={clsx(
-            getStateColor(app.state),
+            getStateColor(container.State),
             'w-4 h-4 rounded-full'
           )}></div>
         </Tooltip>
       </div>
       <Logo
-        src={app.logo}
+        src={getLogoFromContainer(container)}
         alt='app logo'
         className="pointer-events-none w-20 h-20 block object-contain p-0.5 group-hover:scale-125 duration-300 transition-transform transform"
       />
-      <p className="not-sr-only truncate max-w-full px-2 text-center mt-2">{app.title}</p>
+      <p className="not-sr-only truncate max-w-full px-2 text-center mt-2">{getTitleFromContainer(container)}</p>
     </li>
   )
 }

@@ -121,58 +121,6 @@ export type Project = {
   runtime: Runtime
 }
 
-type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
-
-export async function getAppsFromContainers() {
-  const containers = await getAllContainers()
-  const groups: Record<string, Optional<Project, 'runtime'>> = {}
-  for (const container of containers) {
-    const service = container.Labels['com.docker.compose.service']
-    const project = container.Labels['com.docker.compose.project']
-    const dir = container.Labels['com.docker.compose.project.working_dir']
-    const configFiles = (container.Labels['com.docker.compose.project.config_files'] || '').split(',').filter(Boolean)
-    const envFiles = (container.Labels['com.docker.compose.project.environment_file'] || '').split(',').filter(Boolean)
-
-    if (!groups[project]) {
-      // it is supposed that files contains only references to valid compose files since we get it from docker
-      const yamlText = await getComposeConfig(configFiles, envFiles)
-      const config = YAML.parse(yamlText) as ComposeJSON
-      const title = getAppTitle(config)
-      const logo = getAppLogo(config)
-      const key = getServiceKey(config)
-
-      groups[project] = {
-        dir,
-        project,
-        configFiles,
-        envFiles,
-        containers: {},
-        config,
-        title,
-        logo,
-        key,
-        runtime: undefined,
-      }
-    }
-    groups[project].containers[service] = container
-  }
-
-  const projects = Object.values(groups)
-
-  for (const project of projects) {
-    if (project.containers[project.key]) {
-      const { State, Status } = project.containers[project.key]
-      project.runtime = {
-        service: project.key,
-        state: State,
-        status: Status,
-      }
-    }
-  }
-
-  return projects as Project[]
-}
-
 export async function getApps() {
   const configFolder = env.configFolder
   const composeFiles = await getComposeFiles()
@@ -261,11 +209,4 @@ export function getStateTitle(app: Project) {
     return 'Running'
   }
   return 'Not running'
-}
-
-export function getLogoFromContainer(container: Dockerode.ContainerInfo) {
-  const labels = container?.Labels || {}
-  const service = labels['com.docker.compose.service']
-  const logo = labels['dev.sundash.logo'] || `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/${service}.png`
-  return logo
 }

@@ -205,13 +205,7 @@ export async function getAllContainers() {
   })
   
   const containers = await docker.listContainers({ all: true })
-  return containers
+  return containers as Array<Dockerode.ContainerInfo & { State: ContainerState }>
 }
 
-export async function getComposeConfig(filenames: string[], envFiles: string[] = []) {
-  const res = await compose.config({
-    config: filenames,
-    composeOptions: envFiles.length ? ['--env-file', ...envFiles] : []
-  })
-  return res.out
-}
+export type ContainerState = 'created' | 'restarting' | 'running' | 'paused' | 'exited' | 'dead'
