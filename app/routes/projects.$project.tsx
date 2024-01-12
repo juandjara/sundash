@@ -1,7 +1,7 @@
 import { ArrowPathIcon } from "@heroicons/react/20/solid"
 import { StopIcon, ArrowDownTrayIcon, ArrowLeftIcon, ArrowUpTrayIcon, CloudArrowDownIcon, DocumentIcon, PlayIcon } from "@heroicons/react/24/outline"
 import { json, type LoaderArgs } from "@remix-run/node"
-import { Form, Link, useLoaderData } from "@remix-run/react"
+import { Form, Link, useLoaderData, useRevalidator } from "@remix-run/react"
 import clsx from "clsx"
 import path from 'path'
 import { useEffect, useState } from "react"
@@ -64,6 +64,7 @@ export default function ProjectDetail() {
   const { project, logs: initialLogs } = useLoaderData() as { project: Project; logs: string }
   const logs = useLogs(project.key, initialLogs)
   const isRunning = project.containers.some((container) => container.State === 'running')
+  const revalidator = useRevalidator()
 
   return (
     <Layout>
@@ -151,7 +152,16 @@ export default function ProjectDetail() {
           )}
         </div>
         <div className="flex-auto min-w-0 basis-1/2">
-          <h3 className="text-xl font-semibold flex-grow mb-4">Logs</h3>
+          <div className="flex items-end justify-between mb-2">
+            <h3 className="text-xl font-semibold flex-grow mb-4">Logs</h3>
+            <button
+              aria-disabled={revalidator.state === 'loading'}
+              onClick={() => revalidator.revalidate()}
+              className={clsx(buttonCN.small, buttonCN.normal, buttonCN.icon)}
+            >
+              <ArrowPathIcon className="w-5 h-5 text-pink-500" />
+            </button>
+          </div>
           <LogDisplay text={logs.join('\n')} />
         </div>
       </div>
