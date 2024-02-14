@@ -152,8 +152,8 @@ export default function ProjectDetail() {
           )}
         </div>
         <div className="flex-auto min-w-0 basis-1/2">
-          <div className="flex items-end justify-between mb-2">
-            <h3 className="text-xl font-semibold flex-grow mb-4">Logs</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xl font-semibold flex-grow">Logs</h3>
             <button
               aria-disabled={revalidator.state === 'loading'}
               onClick={() => revalidator.revalidate()}
