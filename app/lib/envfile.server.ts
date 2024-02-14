@@ -10,19 +10,23 @@ export async function getComposeFiles() {
   return composeFiles
 }
 
-export async function readEnvFile() {
-  const text = await fs.readFile(path.join(env.configFolder, '.env'), {
-    encoding: 'utf8',
-    flag: 'a+',
-  })
+export function parseEnvFileText(envText: string) {
   const envVars = {} as Record<string, string>
-  text.split('\n').forEach((line) => {
+  envText.split('\n').forEach((line) => {
     const [key, value] = line.split('=')
     if (key && value) {
       envVars[key] = value
     }
   })
   return envVars
+}
+
+export async function readEnvFile() {
+  const text = await fs.readFile(path.join(env.configFolder, '.env'), {
+    encoding: 'utf8',
+    flag: 'a+',
+  })
+  return parseEnvFileText(text)
 }
 
 export async function addToDotEnv(filename: string) {
