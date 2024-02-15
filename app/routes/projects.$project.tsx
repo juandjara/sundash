@@ -6,12 +6,11 @@ import clsx from "clsx"
 import path from 'path'
 import { useEffect, useState } from "react"
 import { useEventSource } from "remix-utils"
+import AppCard from "~/components/AppCard"
 import LogDisplay from "~/components/LogDisplay"
-import Logo from "~/components/Logo"
-import Tooltip from "~/components/Tooltip"
 import Layout from "~/components/layout"
 import { getComposeLogs, getProjectFromKey, handleComposeOperation, type Project } from "~/lib/compose.server"
-import { getLogoFromContainer, getStateColor, getTitleFromContainer } from "~/lib/docker.util"
+import { getLogoFromContainer, getTitleFromContainer } from "~/lib/docker.util"
 import { buttonCN } from "~/lib/styles"
 
 export async function loader({ params }: LoaderArgs) {
@@ -112,7 +111,14 @@ export default function ProjectDetail() {
             <h3 className="text-xl font-semibold flex-grow mb-2">Containers</h3>
             <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 my-4">
               {project.containers.map((container) => (
-                <ContainerCard container={container} key={container.Id} />
+                <AppCard
+                  key={container.Id}
+                  link={`/containers/${container.Id}`}
+                  status={container.Status}
+                  state={container.State}
+                  logo={getLogoFromContainer(container)}
+                  title={getTitleFromContainer(container)}
+                />
               ))}
             </ul>
           </section>
@@ -166,34 +172,5 @@ export default function ProjectDetail() {
         </div>
       </div>
     </Layout>
-  )
-}
-
-function ContainerCard({ container }: { container: Project['containers'][number] }) {
-  return (
-    <li
-      className={clsx(
-        'shadow hover:shadow-md transition-shadow',
-        'bg-white relative group flex flex-col place-items-center border border-zinc-200 py-3 rounded-xl w-40'
-      )}
-    >
-      <Link to={`/containers/${container.Id}`} className="absolute inset-0">
-        <span className="sr-only">{getTitleFromContainer(container)}</span>
-      </Link>
-      <div className="absolute top-2 left-2">              
-        <Tooltip title={container.Status}>
-          <div className={clsx(
-            getStateColor(container.State),
-            'w-4 h-4 rounded-full'
-          )}></div>
-        </Tooltip>
-      </div>
-      <Logo
-        src={getLogoFromContainer(container)}
-        alt='app logo'
-        className="pointer-events-none w-20 h-20 block object-contain p-0.5 group-hover:scale-125 duration-300 transition-transform transform"
-      />
-      <p className="not-sr-only truncate max-w-full px-2 text-center mt-2">{getTitleFromContainer(container)}</p>
-    </li>
   )
 }

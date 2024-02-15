@@ -2,6 +2,9 @@ import type Dockerode from "dockerode"
 import { getAllContainers } from "./docker.server"
 import { type IDockerComposeResult, v2 as compose } from 'docker-compose'
 import { emitter } from "./emitter.server"
+import { ComposeLabels } from "./docker.util"
+
+
 
 export type BaseProject = {
   dir: string
@@ -15,10 +18,10 @@ export type Project = BaseProject & {
 }
 
 export function getBaseProject(container: Dockerode.ContainerInfo): BaseProject {
-  const key = container.Labels['com.docker.compose.project']
-  const dir = container.Labels['com.docker.compose.project.working_dir']
-  const configFiles = (container.Labels['com.docker.compose.project.config_files'] || '').split(',').filter(Boolean)
-  const envFiles = (container.Labels['com.docker.compose.project.environment_file'] || '').split(',').filter(Boolean)
+  const key = container.Labels[ComposeLabels.PROJECT]
+  const dir = container.Labels[ComposeLabels.PROJECT_DIR]
+  const configFiles = (container.Labels[ComposeLabels.PROJECT_CONFIG_FILES] || '').split(',').filter(Boolean)
+  const envFiles = (container.Labels[ComposeLabels.PROJECT_ENV_FILES] || '').split(',').filter(Boolean)
 
   return {
     dir,
@@ -55,7 +58,7 @@ export async function getProjectsFromContainers() {
 
 export async function getProjectFromKey(key: string) {
   const containers = await getAllContainers()
-  const projectContainers = containers.filter((container) => container.Labels['com.docker.compose.project'] === key)
+  const projectContainers = containers.filter((container) => container.Labels[ComposeLabels.PROJECT] === key)
   const first = projectContainers[0]
 
   if (!first) {

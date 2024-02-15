@@ -2,8 +2,27 @@ import env from "./env.server"
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import YAML from 'yaml'
-import { type ComposeJSON, validateComposeJSON } from "./apps"
+import { type ComposeJSON, validateComposeJSON, getAppTitle, getAppLogo, getServiceKey } from "./apps"
 import { parseEnvFileText } from "./envfile.server"
+
+function getComposeJSONExtra({ filename, composeJSON, envJSON }: {
+  filename: string
+  composeJSON?: ComposeJSON
+  envJSON?: Record<string, string>
+}) {
+  if (!composeJSON || !envJSON) {
+    return null
+  }
+
+  const title = getAppTitle(composeJSON)
+  const logo = getAppLogo(composeJSON)
+  const serviceKey = getServiceKey(composeJSON)
+  const { COMPOSE_FILE, COMPOSE_PATH_SEPARATOR } = envJSON
+  const files = COMPOSE_FILE?.split(COMPOSE_PATH_SEPARATOR) || []
+  const enabled = files.includes(filename)
+
+  return { title, logo, serviceKey, enabled }
+}
 
 function parseComposeText(yamlText: string) {
   try {
@@ -13,6 +32,22 @@ function parseComposeText(yamlText: string) {
   } catch {
     return null
   }
+}
+
+const PRIVATE_PREFIX = '_'
+
+export type LibraryProject = {
+  key: string
+  folder: string
+  envFile: {
+    path: string
+    content: Record<string, string> | undefined
+  } | null
+  ymlFiles: {
+    path: string
+    content: ComposeJSON | undefined
+    extra: ReturnType<typeof getComposeJSONExtra>
+  }[]
 }
 
 export async function readConfigFolder() {
@@ -31,8 +66,9 @@ export async function readConfigFolder() {
       const envJSON = parseEnvFileText(envText)
       envContentMap.set(file, envJSON)
       envFiles.push(file)
+      continue
     }
-    if (name.endsWith('.yml')) {
+    if (name.endsWith('.yml') && !name.startsWith(PRIVATE_PREFIX)) {
       const ymlText = await fs.readFile(path.join(env.configFolder, file), 'utf-8')
       const composeJSON = parseComposeText(ymlText)
       if (!composeJSON) {
@@ -48,15 +84,15 @@ export async function readConfigFolder() {
   const projectFolders = [...new Set(envFiles.map((f) => path.dirname(f)))]
   const envProjects = projectFolders.map((f) => {
     const name = path.basename(f)
-    const envFile = envFiles.find((e) => e === path.join(f, '.env')) || ''
+    const envFile = envFiles.find((e) => e === path.join(f, '.env'))!
 
     const ymls = ymlFiles.filter((e) => e.startsWith(f))
     usedYmls.push(...ymls)
 
-    const envFileContent = envContentMap.get(envFile)
+    const envFileContent = envContentMap.get(envFile)!
 
     return {
-      name: envFileContent?.COMPOSE_PROJECT_NAME || name,
+      key: envFileContent?.COMPOSE_PROJECT_NAME || name,
       folder: f,
       envFile: {
         path: path.relative(f, envFile),
@@ -64,7 +100,12 @@ export async function readConfigFolder() {
       },
       ymlFiles: ymls.map((y) => ({
         path: path.relative(f, y),
-        content: ymlContentMap.get(y),
+        content: ymlContentMap.get(y)!,
+        extra: getComposeJSONExtra({
+          filename: path.relative(f, y),
+          composeJSON: ymlContentMap.get(y)!,
+          envJSON: envFileContent,
+        })
       }))
     }
   })
@@ -77,12 +118,17 @@ export async function readConfigFolder() {
       : path.basename(y, '.yml')
 
     return {
-      name,
+      key: name,
       folder,
       envFile: null,
       ymlFiles: [{
         path: path.relative(folder, y),
-        content: ymlContentMap.get(y),
+        content: ymlContentMap.get(y)!,
+        extra: getComposeJSONExtra({
+          filename: path.relative(folder, y),
+          composeJSON: ymlContentMap.get(y)!,
+          envJSON: {},
+        })
       }],
     }
   })
@@ -90,5 +136,9 @@ export async function readConfigFolder() {
   const projects = [...envProjects, ...singleFileProjects]
   console.log('projects', projects)
 
-  return projects
+  return projects.sort((a, b) => {
+    const aNum = a.ymlFiles.length
+    const bNum = b.ymlFiles.length
+    return bNum - aNum
+  })
 }

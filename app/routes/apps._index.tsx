@@ -2,11 +2,10 @@ import { PlusIcon } from "@heroicons/react/20/solid"
 import { Link, useLoaderData } from "@remix-run/react"
 import clsx from "clsx"
 import { useMemo } from "react"
-import Logo from "~/components/Logo"
-import Tooltip from "~/components/Tooltip"
+import AppCard from "~/components/AppCard"
 import Layout from "~/components/layout"
-import { type Project, getProjectsFromContainers } from "~/lib/compose.server"
-import { getLogoFromContainer, getStateColor, getTitleFromContainer } from "~/lib/docker.util"
+import { getProjectsFromContainers } from "~/lib/compose.server"
+import { getLogoFromContainer, getTitleFromContainer } from "~/lib/docker.util"
 import { buttonCN } from "~/lib/styles"
 
 export async function loader() {
@@ -57,40 +56,18 @@ export default function Apps() {
             </Link>
             <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4 pb-2 md:px-2">
               {project.containers.map((container) => (
-                <ContainerCard container={container} key={container.Id} />
+                <AppCard
+                  key={container.Id}
+                  title={getTitleFromContainer(container)}
+                  logo={getLogoFromContainer(container)}
+                  status={container.Status}
+                  state={container.State}
+                />
               ))}
             </ul>
           </section>
         ))}
       </div>
     </Layout>
-  )
-}
-
-function ContainerCard({ container }: { container: Project['containers'][number] }) {
-  return (
-    <li
-      className={clsx(
-        'bg-white shadow relative pointer-events-none',
-        'flex flex-col place-items-center border border-zinc-200 py-3 rounded-xl w-40'
-      )}
-    >
-      <div className="absolute top-2 left-2">              
-        <Tooltip title={container.Status}>
-          <div className={clsx(
-            getStateColor(container.State),
-            'w-4 h-4 rounded-full'
-          )}></div>
-        </Tooltip>
-      </div>
-      <Logo
-        src={getLogoFromContainer(container)}
-        alt='app logo'
-        className="pointer-events-none w-20 h-20 block object-contain p-0.5"
-      />
-      <p className="truncate max-w-full px-2 text-center mt-2">
-        {getTitleFromContainer(container)}
-      </p>
-    </li>
   )
 }
