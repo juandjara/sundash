@@ -16,8 +16,6 @@ import { buttonCN } from "~/lib/styles"
 export async function loader({ request, params }: LoaderArgs) {
   const key = params.project!
   const project = await getProjectFromKey(key)
-  const logs = project ? await getComposeLogs(project) : ''
-
   const library = await readConfigFolder()
   const libraryProject = library.find((l) => l.key === key)
 
@@ -58,6 +56,20 @@ export async function loader({ request, params }: LoaderArgs) {
     }
     return true
   })
+
+  const logKey = services.length === 1 ? services[0].key : key
+
+  let logs = ''
+  try {
+    logs = project ? await getComposeLogs({
+      key: logKey,
+      envFiles: project.envFiles,
+      configFiles: project.configFiles,
+      isSingleService: services.length === 1
+    }) : ''
+  } catch (err) {
+    console.error(`Error getting logs for ${logKey}\n`, err)
+  }
 
   return {
     logs,
@@ -101,27 +113,35 @@ export async function action({ request, params }: LoaderArgs) {
 function useLogs(id: string, initialLogs = '') {
   const [logs, setLogs] = useState(initialLogs.split('\n'))
   const lastLog = useEventSource(`/api/logs?id=${id}`, { event: `log:${id}` })
+
   useEffect(() => {
     if (lastLog) {
       setLogs((prev) => [...prev, lastLog])
     }
   }, [lastLog])
+
+  useEffect(() => {
+    setLogs(initialLogs.split('\n'))
+  }, [initialLogs])
+
   return logs
 }
 
 export default function ProjectDetail() {
   const { project, logs: initialLogs, urlService, urlFile } = useLoaderData<typeof loader>()
-  const logs = useLogs(project.key, initialLogs)
+  const logKey = project.services.length === 1 ? project.services[0].key : project.key
+
+  const logs = useLogs(logKey, initialLogs)
   const isRunning = project.services.some((s) => s.state === 'running')
   const revalidator = useRevalidator()
   const subtitle = urlService || urlFile || ''
 
   return (
     <Layout>
-      <Link to='/'>
+      <Link to={subtitle ? `/library/${project.key}` : '/'}>
         <button type="button" className={clsx('mb-4 text-zinc-500', buttonCN.small, buttonCN.transparent, buttonCN.iconLeft)}>
           <ArrowLeftIcon className="w-5 h-5" />
-          <p>Back to app list</p>
+          <p>Back</p>
         </button>
       </Link>
       <section className="flex flex-wrap gap-2 align-baseline my-4 md:px-2">

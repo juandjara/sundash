@@ -87,17 +87,34 @@ function parseComposeResult(res: IDockerComposeResult) {
   return res.out || res.err || ''
 }
 
-export async function getComposeLogs(project: BaseProject) {
-  compose.logs([], {
-    config: project.configFiles,
-    composeOptions: project.envFiles.length ? ['--env-file', ...project.envFiles] : [],
+export async function getComposeLogs({
+  key,
+  envFiles,
+  configFiles,
+  isSingleService
+}: {
+  key: string,
+  envFiles: string[],
+  configFiles: string[],
+  isSingleService: boolean
+}) {
+  const target = isSingleService ? key : []
+  const fileParams = {
+    config: configFiles,
+    composeOptions: envFiles.length
+      ? ['--env-file', ...envFiles]
+      : [],
+  }
+
+  compose.logs(target, {
+    ...fileParams,
     commandOptions: ['--follow'],
-    callback: (chunk) => emitter.emit(`log:${project.key}`, chunk.toString()),
+    callback: (chunk) => emitter.emit(`log:${key}`, chunk.toString()),
+  }).catch(err => {
+    console.error(`Error getting logs for ${key}\n`, err)
   })
-  const res = await compose.logs([], {
-    config: project.configFiles,
-    composeOptions: project.envFiles.length ? ['--env-file', ...project.envFiles] : [],
-  })
+
+  const res = await compose.logs(target, fileParams)
   const msg = parseComposeResult(res)
   return msg
 }
