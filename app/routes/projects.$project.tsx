@@ -9,21 +9,121 @@ import { useEventSource } from "remix-utils"
 import AppCard from "~/components/AppCard"
 import LogDisplay from "~/components/LogDisplay"
 import Layout from "~/components/layout"
-import { getComposeLogs, getProjectFromKey, handleComposeOperation, type Project } from "~/lib/compose.server"
-import { getLogoFromContainer, getTitleFromContainer } from "~/lib/docker.util"
+import { getComposeLogs, getProjectFromKey, handleComposeOperation } from "~/lib/compose.server"
+import { type ContainerState } from "~/lib/docker.server"
+import { ComposeLabels, SundashLabels, defaultLogo } from "~/lib/docker.util"
+import { readConfigFolder } from "~/lib/library.server"
 import { buttonCN } from "~/lib/styles"
 
-export async function loader({ params }: LoaderArgs) {
+export async function loader({ request, params }: LoaderArgs) {
   const key = params.project!
   const project = await getProjectFromKey(key)
-  const logs = await getComposeLogs(project)
+  const logs = project ? await getComposeLogs(project) : ''
+  const { searchParams } = new URL(request.url)
+  const urlService = searchParams.get('service')
+  const urlFile = searchParams.get('file')
+
+  const library = await readConfigFolder()
+  const libraryProject = library.find((l) => l.key === key)
+
+  if (!project && !libraryProject) {
+    throw new Response('Project not found', { status: 404 })
+  }
+
+  const ymlFiles = libraryProject?.ymlFiles.filter((f) => {
+    if (urlFile) {
+      return f.path === urlFile
+    }
+    if (urlService) {
+      return Object.keys(f.content.services).includes(urlService)
+    }
+    return true
+  }) || []
+
+  const envFiles = Array.from(new Set([
+    libraryProject?.envFile?.path,
+    ...project?.envFiles.map((file) => path.relative(project?.dir, file)) || [],
+  ].filter(Boolean)))
+  const configFiles = Array.from(new Set([
+    ...ymlFiles.map((file) => file.path) || [],
+    ...project?.configFiles.map((file) => path.relative(project.dir, file)) || [],
+  ].filter(Boolean)))
+
+  const containerServiceMap = Object.fromEntries(
+    project?.containers.map((container) => [
+      container.Labels[ComposeLabels.SERVICE],
+      container
+    ]) || []
+  )
+
+  let services = [] as {
+    key: string
+    logo: string
+    title: string
+    state: ContainerState
+    status: string
+    enabled: boolean
+  }[]
+  
+  const shouldExpandServices = libraryProject?.ymlFiles.length === 1
+
+  if (libraryProject) {
+    services = ymlFiles.map((yml) => {
+      return Object.entries(yml.content.services)
+        .filter(([key, value], i) => {
+          if (shouldExpandServices) {
+            return true
+          }
+          if (urlService) {
+            return key === urlService
+          }
+
+          return value?.labels?.[SundashLabels.MAIN] === 'true' || i === 0
+        })
+        .map(([key, value]) => {
+          const title = value?.labels?.[SundashLabels.TITLE] || key
+          const logo = value?.labels?.[SundashLabels.LOGO] || defaultLogo(key)
+          const state = containerServiceMap[key]?.State
+          const status = containerServiceMap[key]?.Status
+          const enabled = yml.meta.enabled
+          return {
+            key,
+            logo,
+            title,
+            state,
+            status,
+            enabled,
+          }
+        })
+    })
+    .flat()
+  }
+  if (!libraryProject && project) {
+    services = project.containers.map((container) => {
+      const key = container.Labels[ComposeLabels.SERVICE]
+      const title = container.Labels[SundashLabels.TITLE] || key
+      const logo = container.Labels[SundashLabels.LOGO] || defaultLogo(title)
+      const state = container.State
+      const status = container.Status
+      return {
+        key,
+        logo,
+        title,
+        state,
+        status,
+        enabled: true,
+      }
+    })
+  }
 
   return {
     logs,
     project: {
-      ...project,
-      configFiles: project.configFiles.map((file) => path.relative(project.dir, file)),
-      envFiles: project.envFiles.map((file) => path.relative(project.dir, file)),
+      key,
+      dir: project?.dir || libraryProject?.folder || '',
+      configFiles,
+      envFiles,
+      services,
     }
   }
 }
@@ -31,6 +131,9 @@ export async function loader({ params }: LoaderArgs) {
 export async function action({ request, params }: LoaderArgs) {
   const key = params.project!
   const project = await getProjectFromKey(key)
+  if (!project) {
+    throw new Response('Project not found', { status: 404 })
+  }
 
   const fd = await request.formData()
   const op = fd.get('op') as any
@@ -60,9 +163,9 @@ function useLogs(id: string, initialLogs = '') {
 }
 
 export default function ProjectDetail() {
-  const { project, logs: initialLogs } = useLoaderData() as { project: Project; logs: string }
+  const { project, logs: initialLogs } = useLoaderData<typeof loader>()
   const logs = useLogs(project.key, initialLogs)
-  const isRunning = project.containers.some((container) => container.State === 'running')
+  const isRunning = project.services.some((s) => s.state === 'running')
   const revalidator = useRevalidator()
 
   return (
@@ -108,25 +211,31 @@ export default function ProjectDetail() {
       <div className="flex flex-wrap">
         <div className="flex-auto basis-1/2">
           <section className="md:px-2">
-            <h3 className="text-xl font-semibold flex-grow mb-2">Containers</h3>
+            <h3 className="text-xl font-semibold flex-grow mb-2">
+              Services
+            </h3>
+            {project.services.length === 0 && (
+              <p className="text-gray-500">No services found</p>
+            )}
             <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 my-4">
-              {project.containers.map((container) => (
+              {project.services.map((s) => (
                 <AppCard
-                  key={container.Id}
-                  link={`/containers/${container.Id}`}
-                  status={container.Status}
-                  state={container.State}
-                  logo={getLogoFromContainer(container)}
-                  title={getTitleFromContainer(container)}
+                  link={`/projects/${project.key}?service=${s.key}`}
+                  key={s.key}
+                  logo={s.logo}
+                  title={s.title}
+                  enabled={s.enabled}
+                  state={s.state}
+                  status={s.status}
                 />
               ))}
             </ul>
           </section>
-          <section className="mt-6 mb-3 md:px-2">
+          <section className="mt-9 mb-3 md:px-2">
             <h3 className="text-xl font-semibold flex-grow mb-2">Config files</h3>
-            <ul>
+            <ul className="columns-2">
               {project.configFiles.map((file, i) => (
-                <li key={file} className="flex">
+                <li key={file}>
                   <Link
                     to={`/projects/${project.key}/edit?i=${i}&type=config`}
                     className="flex gap-2 py-1 pr-2 items-center rounded-md hover:bg-gray-100 transition-colors"
@@ -141,9 +250,9 @@ export default function ProjectDetail() {
           {project.envFiles.length > 0 && (
             <section className="my-6 md:px-2">
               <h3 className="text-xl font-semibold flex-grow mb-2">Env files</h3>
-              <ul>
+              <ul className="columns-2">
                 {project.envFiles.map((file, i) => (
-                  <li key={file} className="flex">
+                  <li key={file}>
                     <Link
                       to={`/projects/${project.key}/edit?i=${i}&type=env`}
                       className="flex gap-2 py-1 pr-2 items-center rounded-md hover:bg-gray-100 transition-colors"

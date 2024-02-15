@@ -30,10 +30,6 @@ export default function LogDisplay({ text, className = '', hideScrollToBottom = 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text])
 
-  if (!text) {
-    return null
-  }
-
   const showScrollToBottom = !hideScrollToBottom && !isAtTheBottom
 
   function onScroll(ev: React.WheelEvent<HTMLPreElement>) {

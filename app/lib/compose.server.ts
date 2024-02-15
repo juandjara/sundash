@@ -60,9 +60,8 @@ export async function getProjectFromKey(key: string) {
   const containers = await getAllContainers()
   const projectContainers = containers.filter((container) => container.Labels[ComposeLabels.PROJECT] === key)
   const first = projectContainers[0]
-
   if (!first) {
-    throw new Response('Project not found', { status: 404 })
+    return null
   }
 
   const baseProject = getBaseProject(first)

@@ -49,7 +49,7 @@ export default function Library() {
           'mb-6 px-2 rounded-lg relative',
           'shadow-none hover:bg-red-50/50 hover:shadow hover:shadow-pink-100 transition-all'
         )}>
-          <Link to={`/library/${project.key}`} className="absolute inset-0">
+          <Link to={`/projects/${project.key}`} className="absolute inset-0">
             <span className="sr-only">{project.key}</span>
           </Link>
           <h3 className="border-b mb-2 pt-1 pb-2 px-1.5">
@@ -57,17 +57,17 @@ export default function Library() {
             <p className="text-sm text-gray-500"> {formatFolder(project)} </p>
           </h3>
           <ul className="py-2 flex flex-wrap justify-start gap-4">
-            {project.ymlFiles.map(({ path, content, extra }) => {
-              const { State, Status } = getContainerForService(extra?.serviceKey) || {}
+            {project.ymlFiles.map(({ path, content, meta }) => {
+              const { State, Status } = getContainerForService(meta?.serviceKey) || {}
               return (
                 <AppCard
                   key={path}
-                  link={`/library/${project.key}/${path}`}
-                  title={extra?.title || path}
-                  logo={extra?.logo || ''}
+                  link={`/projects/${project.key}?file=${path}`}
+                  title={meta?.title || path}
+                  logo={meta?.logo || ''}
                   state={State}
                   status={Status}
-                  enabled={extra?.enabled}
+                  enabled={meta?.enabled}
                 />
               )
             })}

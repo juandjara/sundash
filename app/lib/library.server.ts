@@ -5,7 +5,7 @@ import YAML from 'yaml'
 import { type ComposeJSON, validateComposeJSON, getAppTitle, getAppLogo, getServiceKey } from "./apps"
 import { parseEnvFileText } from "./envfile.server"
 
-function getComposeJSONExtra({ filename, composeJSON, envJSON }: {
+function getComposeJSONMeta({ filename, composeJSON, envJSON }: {
   filename: string
   composeJSON: ComposeJSON
   envJSON?: Record<string, string>
@@ -42,7 +42,7 @@ export type LibraryProject = {
   ymlFiles: {
     path: string
     content: ComposeJSON | undefined
-    extra: ReturnType<typeof getComposeJSONExtra>
+    meta: ReturnType<typeof getComposeJSONMeta>
   }[]
 }
 
@@ -97,14 +97,14 @@ export async function readConfigFolder() {
       ymlFiles: ymls.map((y) => ({
         path: path.relative(f, y),
         content: ymlContentMap.get(y)!,
-        extra: getComposeJSONExtra({
+        meta: getComposeJSONMeta({
           filename: path.relative(f, y),
           composeJSON: ymlContentMap.get(y)!,
           envJSON: envFileContent,
         })
       })).sort((a, b) => {
-        const aNum = Number(a.extra?.enabled)
-        const bNum = Number(b.extra?.enabled)
+        const aNum = Number(a.meta?.enabled)
+        const bNum = Number(b.meta?.enabled)
         return bNum - aNum
       })
     }
@@ -113,9 +113,8 @@ export async function readConfigFolder() {
   const notUsedYmls = ymlFiles.filter((y) => !usedYmls.includes(y))
   const singleFileProjects = notUsedYmls.map((y) => {
     const folder = path.dirname(y)
-    const name = ['compose', 'docker-compose'].includes(path.basename(y, '.yml'))
-      ? path.basename(folder)
-      : path.basename(y, '.yml')
+    const fullPath = path.join(__dirname, env.configFolder, y)
+    const name = path.basename(path.dirname(fullPath))
 
     return {
       key: name,
@@ -124,7 +123,7 @@ export async function readConfigFolder() {
       ymlFiles: [{
         path: path.relative(folder, y),
         content: ymlContentMap.get(y)!,
-        extra: getComposeJSONExtra({
+        meta: getComposeJSONMeta({
           filename: path.relative(folder, y),
           composeJSON: ymlContentMap.get(y)!,
         })
