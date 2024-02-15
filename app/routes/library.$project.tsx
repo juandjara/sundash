@@ -9,19 +9,14 @@ import { useEventSource } from "remix-utils"
 import AppCard from "~/components/AppCard"
 import LogDisplay from "~/components/LogDisplay"
 import Layout from "~/components/layout"
-import { getComposeLogs, getProjectFromKey, handleComposeOperation } from "~/lib/compose.server"
-import { type ContainerState } from "~/lib/docker.server"
-import { ComposeLabels, SundashLabels, defaultLogo } from "~/lib/docker.util"
-import { readConfigFolder } from "~/lib/library.server"
+import { type ComposeOperation, getComposeLogs, getProjectFromKey, handleComposeOperation } from "~/lib/compose.server"
+import { getDetailedServices, readConfigFolder } from "~/lib/library.server"
 import { buttonCN } from "~/lib/styles"
 
 export async function loader({ request, params }: LoaderArgs) {
   const key = params.project!
   const project = await getProjectFromKey(key)
   const logs = project ? await getComposeLogs(project) : ''
-  const { searchParams } = new URL(request.url)
-  const urlService = searchParams.get('service')
-  const urlFile = searchParams.get('file')
 
   const library = await readConfigFolder()
   const libraryProject = library.find((l) => l.key === key)
@@ -29,6 +24,10 @@ export async function loader({ request, params }: LoaderArgs) {
   if (!project && !libraryProject) {
     throw new Response('Project not found', { status: 404 })
   }
+
+  const { searchParams } = new URL(request.url)
+  const urlService = searchParams.get('service')
+  const urlFile = searchParams.get('file')
 
   const ymlFiles = libraryProject?.ymlFiles.filter((f) => {
     if (urlFile) {
@@ -43,86 +42,30 @@ export async function loader({ request, params }: LoaderArgs) {
   const envFiles = Array.from(new Set([
     libraryProject?.envFile?.path,
     ...project?.envFiles.map((file) => path.relative(project?.dir, file)) || [],
-  ].filter(Boolean)))
+  ].filter(Boolean) as string[]))
+
   const configFiles = Array.from(new Set([
     ...ymlFiles.map((file) => file.path) || [],
     ...project?.configFiles.map((file) => path.relative(project.dir, file)) || [],
   ].filter(Boolean)))
 
-  const containerServiceMap = Object.fromEntries(
-    project?.containers.map((container) => [
-      container.Labels[ComposeLabels.SERVICE],
-      container
-    ]) || []
-  )
-
-  let services = [] as {
-    key: string
-    logo: string
-    title: string
-    state: ContainerState
-    status: string
-    enabled: boolean
-  }[]
-  
-  const shouldExpandServices = libraryProject?.ymlFiles.length === 1
-
-  if (libraryProject) {
-    services = ymlFiles.map((yml) => {
-      return Object.entries(yml.content.services)
-        .filter(([key, value], i) => {
-          if (shouldExpandServices) {
-            return true
-          }
-          if (urlService) {
-            return key === urlService
-          }
-
-          return value?.labels?.[SundashLabels.MAIN] === 'true' || i === 0
-        })
-        .map(([key, value]) => {
-          const title = value?.labels?.[SundashLabels.TITLE] || key
-          const logo = value?.labels?.[SundashLabels.LOGO] || defaultLogo(key)
-          const state = containerServiceMap[key]?.State
-          const status = containerServiceMap[key]?.Status
-          const enabled = yml.meta.enabled
-          return {
-            key,
-            logo,
-            title,
-            state,
-            status,
-            enabled,
-          }
-        })
-    })
-    .flat()
-  }
-  if (!libraryProject && project) {
-    services = project.containers.map((container) => {
-      const key = container.Labels[ComposeLabels.SERVICE]
-      const title = container.Labels[SundashLabels.TITLE] || key
-      const logo = container.Labels[SundashLabels.LOGO] || defaultLogo(title)
-      const state = container.State
-      const status = container.Status
-      return {
-        key,
-        logo,
-        title,
-        state,
-        status,
-        enabled: true,
-      }
-    })
-  }
+  const services = getDetailedServices(
+    ymlFiles,
+    project?.containers || []
+  ).filter((s) => {
+    if (urlService) {
+      return s.key === urlService
+    }
+    return true
+  })
 
   return {
     logs,
     project: {
       key,
       dir: project?.dir || libraryProject?.folder || '',
-      configFiles,
       envFiles,
+      configFiles,
       services,
     }
   }
@@ -130,16 +73,18 @@ export async function loader({ request, params }: LoaderArgs) {
 
 export async function action({ request, params }: LoaderArgs) {
   const key = params.project!
-  const project = await getProjectFromKey(key)
-  if (!project) {
-    throw new Response('Project not found', { status: 404 })
-  }
-
   const fd = await request.formData()
-  const op = fd.get('op') as any
+  const op = fd.get('op') as ComposeOperation
+  const envFiles = (fd.get('envFiles') as string).split(',').filter(Boolean)
+  const configFiles = (fd.get('configFiles') as string).split(',').filter(Boolean)
 
   try {
-    const res = await handleComposeOperation(project, op)
+    const res = await handleComposeOperation({
+      op,
+      key,
+      envFiles: envFiles.filter(Boolean) as string[],
+      configFiles: configFiles.filter(Boolean) as string[],
+    })
     return json({ msg: res })
   } catch (err) {
     if (err instanceof Response) {
@@ -179,6 +124,8 @@ export default function ProjectDetail() {
       <section className="flex flex-wrap gap-2 align-baseline my-4 md:px-2">
         <p className="capitalize text-2xl font-semibold flex-grow">{project.key}</p>
         <Form method='POST' className="flex flex-wrap items-center gap-2">
+          <input type="hidden" name="envFiles" value={project.envFiles.join(',')} />
+          <input type="hidden" name="configFiles" value={project.configFiles.join(',')} />
           <button name="op" value="up" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
             <ArrowUpTrayIcon className="w-5 h-5" />
             <p>Up</p>

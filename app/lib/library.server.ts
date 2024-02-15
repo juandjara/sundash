@@ -4,6 +4,9 @@ import path from 'node:path'
 import YAML from 'yaml'
 import { type ComposeJSON, validateComposeJSON, getAppTitle, getAppLogo, getServiceKey } from "./apps"
 import { parseEnvFileText } from "./envfile.server"
+import type Dockerode from "dockerode"
+import { type ContainerState } from "./docker.server"
+import { ComposeLabels, SundashLabels, defaultLogo } from "./docker.util"
 
 function getComposeJSONMeta({ filename, composeJSON, envJSON }: {
   filename: string
@@ -138,4 +141,73 @@ export async function readConfigFolder() {
     const bNum = b.ymlFiles.length
     return bNum - aNum
   })
+}
+
+type Container = Dockerode.ContainerInfo & { State: ContainerState }
+
+export function getDetailedServices(ymlFiles: LibraryProject['ymlFiles'], containers: Container[]) {
+  const containerServiceMap = Object.fromEntries(
+    containers.map((container) => [
+      container.Labels[ComposeLabels.SERVICE],
+      container
+    ]) || []
+  )
+
+  let services = [] as {
+    key: string
+    logo: string
+    title: string
+    state: ContainerState
+    status: string
+    enabled: boolean
+  }[]
+  
+  const shouldExpandServices = ymlFiles.length === 1
+
+  if (ymlFiles.length > 0) {
+    services = ymlFiles.map((yml) => {
+      return Object.entries(yml.content!.services)
+        .filter(([key, value], i) => {
+          if (shouldExpandServices) {
+            return true
+          }
+
+          return value?.labels?.[SundashLabels.MAIN] === 'true' || i === 0
+        })
+        .map(([key, value]) => {
+          const title = value?.labels?.[SundashLabels.TITLE] || key
+          const logo = value?.labels?.[SundashLabels.LOGO] || defaultLogo(key)
+          const state = containerServiceMap[key]?.State
+          const status = containerServiceMap[key]?.Status
+          const enabled = yml.meta.enabled
+          return {
+            key,
+            logo,
+            title,
+            state,
+            status,
+            enabled,
+          }
+        })
+    })
+    .flat()
+  } else if (containers.length > 0) {
+    services = containers.map((container) => {
+      const key = container.Labels[ComposeLabels.SERVICE]
+      const title = container.Labels[SundashLabels.TITLE] || key
+      const logo = container.Labels[SundashLabels.LOGO] || defaultLogo(title)
+      const state = container.State
+      const status = container.Status
+      return {
+        key,
+        logo,
+        title,
+        state,
+        status,
+        enabled: true,
+      }
+    })
+  }
+
+  return services
 }

@@ -3,8 +3,8 @@ import { getAllContainers } from "./docker.server"
 import { type IDockerComposeResult, v2 as compose } from 'docker-compose'
 import { emitter } from "./emitter.server"
 import { ComposeLabels } from "./docker.util"
-
-
+import path from 'node:path'
+import env from "./env.server"
 
 export type BaseProject = {
   dir: string
@@ -102,9 +102,19 @@ export async function getComposeLogs(project: BaseProject) {
   return msg
 }
 
-type ComposeOperation = 'up' | 'down' | 'restart' | 'pull' | 'stop' | 'start'
+export type ComposeOperation = 'up' | 'down' | 'restart' | 'pull' | 'stop' | 'start'
 
-export async function handleComposeOperation(project: BaseProject, op: ComposeOperation) {
+export async function handleComposeOperation({
+  op,
+  key,
+  configFiles,
+  envFiles
+}: {
+  op: ComposeOperation,
+  key: string,
+  configFiles: string[],
+  envFiles: string[]
+}) {
   try {
     const opMap = {
       up: compose.upAll,
@@ -116,9 +126,11 @@ export async function handleComposeOperation(project: BaseProject, op: ComposeOp
     }
     const method = opMap[op]
     const res = await method({
-      config: project.configFiles,
-      composeOptions: project.envFiles.length ? ['--env-file', ...project.envFiles] : [],
-      callback: (chunk) => emitter.emit(`log:${project.key}`, chunk.toString()),
+      config: configFiles.map((f) => path.join(env.configFolder, f)),
+      composeOptions: envFiles.length
+        ? ['--env-file', ...envFiles.map((f) => path.join(env.configFolder, f))]
+        : [],
+      callback: (chunk) => emitter.emit(`log:${key}`, chunk.toString()),
     })
     const msg = parseComposeResult(res)
     return msg
