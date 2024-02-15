@@ -1,7 +1,19 @@
 import { ArrowPathIcon } from "@heroicons/react/20/solid"
-import { StopIcon, ArrowDownTrayIcon, ArrowLeftIcon, ArrowUpTrayIcon, CloudArrowDownIcon, DocumentIcon, PlayIcon } from "@heroicons/react/24/outline"
+import {
+  PencilIcon,
+  TrashIcon,
+  MinusCircleIcon,
+  PlusCircleIcon,
+  StopIcon,
+  ArrowDownTrayIcon,
+  ArrowLeftIcon,
+  ArrowUpTrayIcon,
+  CloudArrowDownIcon,
+  DocumentIcon,
+  PlayIcon
+} from "@heroicons/react/24/outline"
 import { json, type LoaderArgs } from "@remix-run/node"
-import { Form, Link, useLoaderData, useRevalidator } from "@remix-run/react"
+import { Form, Link, useLoaderData, useNavigation, useRevalidator } from "@remix-run/react"
 import clsx from "clsx"
 import path from 'path'
 import { useEffect, useState } from "react"
@@ -50,7 +62,8 @@ export async function loader({ request, params }: LoaderArgs) {
   const services = getDetailedServices(
     ymlFiles,
     project?.containers || []
-  ).filter((s) => {
+  )
+  const filteredServices = services.filter((s) => {
     if (urlService) {
       return s.key === urlService
     }
@@ -80,7 +93,8 @@ export async function loader({ request, params }: LoaderArgs) {
       dir: project?.dir || libraryProject?.folder || '',
       envFiles,
       configFiles,
-      services,
+      services: filteredServices,
+      numServices: services.length,
     }
   }
 }
@@ -135,6 +149,10 @@ export default function ProjectDetail() {
   const isRunning = project.services.some((s) => s.state === 'running')
   const revalidator = useRevalidator()
   const subtitle = urlService || urlFile || ''
+  const service = project.services.length === 1 ? project.services[0] : null
+
+  const transition = useNavigation()
+  const busy = transition.state !== 'idle'
 
   return (
     <Layout>
@@ -144,7 +162,7 @@ export default function ProjectDetail() {
           <p>Back</p>
         </button>
       </Link>
-      <section className="flex flex-wrap gap-2 align-baseline my-4 md:px-2">
+      <section className="flex flex-wrap gap-4 items-end mb-4 md:px-2">
         <p className="flex-grow">
           <span className="text-2xl font-semibold capitalize">{project.key}</span>
           {subtitle && (
@@ -153,39 +171,100 @@ export default function ProjectDetail() {
             </span>
           )}
         </p>
-        <Form method='POST' className="flex flex-wrap items-center gap-2">
+        <Form method='POST'>
           <input type="hidden" name="envFiles" value={project.envFiles.join(',')} />
           <input type="hidden" name="configFiles" value={project.configFiles.join(',')} />
-          <button name="op" value="up" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
-            <ArrowUpTrayIcon className="w-5 h-5" />
-            <p>Up</p>
-          </button>
-          <button name="op" value="down" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
-            <ArrowDownTrayIcon className="w-5 h-5" />
-            <p>Down</p>
-          </button>
-          <button name="op" value="pull" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
-            <CloudArrowDownIcon className="w-5 h-5" />
-            <p>Pull</p>
-          </button>
-          <button name="op" value="restart" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
-            <ArrowPathIcon className="w-5 h-5" />
-            <p>Restart</p>
-          </button>
-          {isRunning ? (
-            <button name="op" value="stop" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
-              <StopIcon className="w-5 h-5" />
-              <p>Stop</p>
+          <div className="flex flex-wrap items-center justify-end gap-2 mb-2">
+            {project.configFiles.length === 1 ? (
+              <Link to={`/edit/${project.key}?file=${project.configFiles[0]}&type=yml`}>
+                <button
+                  type="button"
+                  className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
+                >
+                  <PencilIcon className="w-5 h-5" />
+                  <p>Edit</p>
+                </button>
+              </Link>
+            ) : null}
+            {service && project.envFiles.length > 0
+              ? (
+                service?.enabled ? (
+                  <button
+                    aria-disabled={busy}
+                    name="op"
+                    value="disable"
+                    className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
+                  >
+                    <MinusCircleIcon className="w-5 h-5" />
+                    <p>Disable</p>
+                  </button>
+                ) : (
+                  <button
+                    aria-disabled={busy}
+                    name="op"
+                    value="enable"
+                    className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
+                  >
+                    <PlusCircleIcon className="w-5 h-5" />
+                    <p>Enable</p>
+                  </button>
+                )
+              ) : null}
+            {service ? (
+              <button
+                aria-disabled={busy}
+                name="op"
+                value="delete"
+                onClick={(ev) => {
+                  if (!confirm(`This action will remove all .yml files associated with the service. Are you sure? This action cannot be undone.`)) {
+                    ev.preventDefault()
+                    ev.stopPropagation()
+                  }
+                }}
+                className={clsx(
+                  buttonCN.normal,
+                  buttonCN.delete,
+                  buttonCN.iconLeft,
+                  'border-2 border-red-200',
+                )}
+              >
+                <TrashIcon className="w-5 h-5" />
+                <p>Delete</p>
+              </button>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button name="op" value="up" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+              <ArrowUpTrayIcon className="w-5 h-5" />
+              <p>Up</p>
             </button>
-          ) : (
-            <button name="op" value="start" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
-              <PlayIcon className="w-5 h-5" />
-              <p>Start</p>
+            <button name="op" value="down" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+              <ArrowDownTrayIcon className="w-5 h-5" />
+              <p>Down</p>
             </button>
-          )}
+            <button name="op" value="pull" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+              <CloudArrowDownIcon className="w-5 h-5" />
+              <p>Pull</p>
+            </button>
+            <button name="op" value="restart" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+              <ArrowPathIcon className="w-5 h-5" />
+              <p>Restart</p>
+            </button>
+            {isRunning ? (
+              <button name="op" value="stop" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+                <StopIcon className="w-5 h-5" />
+                <p>Stop</p>
+              </button>
+            ) : (
+              <button name="op" value="start" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+                <PlayIcon className="w-5 h-5" />
+                <p>Start</p>
+              </button>
+            )}
+          </div>
         </Form>
       </section>
-      <div className="flex flex-wrap">
+      <div className="md:flex flex-wrap">
         <div className="flex-auto basis-1/2">
           <section className="md:px-2">
             <h3 className="sr-only">
@@ -211,14 +290,15 @@ export default function ProjectDetail() {
           <section className="mt-9 mb-3 md:px-2">
             <h3 className="text-xl font-semibold flex-grow mb-2">Config files</h3>
             <ul className="columns-2">
-              {project.configFiles.map((file, i) => (
+              {project.configFiles.map((file) => (
                 <li key={file}>
                   <Link
-                    to={`/library/${project.key}/edit?i=${i}&type=config`}
-                    className="flex gap-2 py-1 pr-2 items-center rounded-md hover:bg-gray-100 transition-colors"
+                    to={`/edit/${project.key}?file=${file}&type=yml`}
+                    className="group flex gap-2 py-1 pr-2 items-center rounded-md hover:bg-gray-100 transition-colors"
                   >
                     <DocumentIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />
                     <p className="text-gray-600 flex-grow">{file}</p>
+                    <PencilIcon className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                 </li>
               ))}
@@ -228,14 +308,15 @@ export default function ProjectDetail() {
             <section className="my-6 md:px-2">
               <h3 className="text-xl font-semibold flex-grow mb-2">Env files</h3>
               <ul className="columns-2">
-                {project.envFiles.map((file, i) => (
+                {project.envFiles.map((file) => (
                   <li key={file}>
                     <Link
-                      to={`/library/${project.key}/edit?i=${i}&type=env`}
-                      className="flex gap-2 py-1 pr-2 items-center rounded-md hover:bg-gray-100 transition-colors"
+                      to={`/edit/${project.key}?file=${file}&type=env`}
+                      className="group flex gap-2 py-1 pr-2 items-center rounded-md hover:bg-gray-100 transition-colors"
                     >
                       <DocumentIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />
-                      <p className="text-gray-600">{file}</p>
+                      <p className="text-gray-600 flex-grow">{file}</p>
+                      <PencilIcon className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </Link>
                   </li>
                 ))}
