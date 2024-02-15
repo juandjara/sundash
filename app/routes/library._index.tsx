@@ -120,8 +120,8 @@ export default function Library() {
               const { State, Status } = containerServiceMap[meta?.serviceKey] || {}
               return (
                 <AppCard
-                  key={path}
-                  link={`/library/${project.key}?file=${path}`}
+                  key={`${project.key}?service=${meta?.serviceKey}`}
+                  link={`/library/${project.key}?service=${meta?.serviceKey}`}
                   title={meta?.title || path}
                   logo={meta?.logo || ''}
                   state={State}
