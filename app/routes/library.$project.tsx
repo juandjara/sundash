@@ -61,6 +61,8 @@ export async function loader({ request, params }: LoaderArgs) {
 
   return {
     logs,
+    urlFile,
+    urlService,
     project: {
       key,
       dir: project?.dir || libraryProject?.folder || '',
@@ -108,10 +110,11 @@ function useLogs(id: string, initialLogs = '') {
 }
 
 export default function ProjectDetail() {
-  const { project, logs: initialLogs } = useLoaderData<typeof loader>()
+  const { project, logs: initialLogs, urlService, urlFile } = useLoaderData<typeof loader>()
   const logs = useLogs(project.key, initialLogs)
   const isRunning = project.services.some((s) => s.state === 'running')
   const revalidator = useRevalidator()
+  const subtitle = urlService || urlFile || ''
 
   return (
     <Layout>
@@ -122,7 +125,14 @@ export default function ProjectDetail() {
         </button>
       </Link>
       <section className="flex flex-wrap gap-2 align-baseline my-4 md:px-2">
-        <p className="capitalize text-2xl font-semibold flex-grow">{project.key}</p>
+        <p className="flex-grow">
+          <span className="text-2xl font-semibold capitalize">{project.key}</span>
+          {subtitle && (
+            <span className="text-gray-500 text-lg ml-2">
+              / {subtitle}
+            </span>
+          )}
+        </p>
         <Form method='POST' className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="envFiles" value={project.envFiles.join(',')} />
           <input type="hidden" name="configFiles" value={project.configFiles.join(',')} />
@@ -158,13 +168,13 @@ export default function ProjectDetail() {
       <div className="flex flex-wrap">
         <div className="flex-auto basis-1/2">
           <section className="md:px-2">
-            <h3 className="text-xl font-semibold flex-grow mb-2">
+            <h3 className="sr-only">
               Services
             </h3>
             {project.services.length === 0 && (
               <p className="text-gray-500">No services found</p>
             )}
-            <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 my-4">
+            <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-4">
               {project.services.map((s) => (
                 <AppCard
                   link={`/library/${project.key}?service=${s.key}`}
