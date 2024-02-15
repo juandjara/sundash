@@ -51,7 +51,7 @@ export default function Apps() {
             <h3 className="not-sr-only capitalize text-xl font-semibold md:px-2 py-2 border-b border-gray-200">
               {project.key}
             </h3>
-            <Link to={`/projects/${project.key}`} className="absolute inset-0">
+            <Link to={`/library/${project.key}`} className="absolute inset-0">
               <span className="sr-only">{project.key}</span>
             </Link>
             <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4 pb-2 md:px-2">

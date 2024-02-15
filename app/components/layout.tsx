@@ -10,7 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode}) {
           <Link to='/'>SunDASH</Link>
         </h1>
         <nav className="flex items-center gap-2">
-          <Link to="/apps" className={clsx(buttonCN.outline, buttonCN.normal)}>Apps</Link>
+          <Link to="/" className={clsx(buttonCN.outline, buttonCN.normal)}>Apps</Link>
           <Link to="/appstore" className={clsx(buttonCN.outline, buttonCN.normal)}>App Store</Link>
           <Link to="/config" className={clsx(buttonCN.outline, buttonCN.normal)}>Config</Link>
         </nav>

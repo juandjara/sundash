@@ -151,7 +151,7 @@ export async function handleDockerOperation({ filename, key, op, state }: Compos
         removeFromDotEnv(filename),
         fs.unlink(path.join(env.configFolder, filename))
       ])
-      throw redirect('/apps')
+      throw redirect('/')
     }
   } catch (err) {
     if (err instanceof Response) {

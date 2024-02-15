@@ -170,7 +170,7 @@ export default function ProjectDetail() {
 
   return (
     <Layout>
-      <Link to='/apps'>
+      <Link to='/'>
         <button type="button" className={clsx('mb-4 text-zinc-500', buttonCN.small, buttonCN.transparent, buttonCN.iconLeft)}>
           <ArrowLeftIcon className="w-5 h-5" />
           <p>Back to app list</p>
@@ -220,7 +220,7 @@ export default function ProjectDetail() {
             <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 my-4">
               {project.services.map((s) => (
                 <AppCard
-                  link={`/projects/${project.key}?service=${s.key}`}
+                  link={`/library/${project.key}?service=${s.key}`}
                   key={s.key}
                   logo={s.logo}
                   title={s.title}
@@ -237,7 +237,7 @@ export default function ProjectDetail() {
               {project.configFiles.map((file, i) => (
                 <li key={file}>
                   <Link
-                    to={`/projects/${project.key}/edit?i=${i}&type=config`}
+                    to={`/library/${project.key}/edit?i=${i}&type=config`}
                     className="flex gap-2 py-1 pr-2 items-center rounded-md hover:bg-gray-100 transition-colors"
                   >
                     <DocumentIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />
@@ -254,7 +254,7 @@ export default function ProjectDetail() {
                 {project.envFiles.map((file, i) => (
                   <li key={file}>
                     <Link
-                      to={`/projects/${project.key}/edit?i=${i}&type=env`}
+                      to={`/library/${project.key}/edit?i=${i}&type=env`}
                       className="flex gap-2 py-1 pr-2 items-center rounded-md hover:bg-gray-100 transition-colors"
                     >
                       <DocumentIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />

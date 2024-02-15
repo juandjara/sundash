@@ -132,7 +132,6 @@ export async function readConfigFolder() {
   })
 
   const projects = [...envProjects, ...singleFileProjects]
-  console.log('projects', projects)
 
   return projects.sort((a, b) => {
     const aNum = a.ymlFiles.length
