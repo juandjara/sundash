@@ -7,19 +7,15 @@ import { parseEnvFileText } from "./envfile.server"
 
 function getComposeJSONExtra({ filename, composeJSON, envJSON }: {
   filename: string
-  composeJSON?: ComposeJSON
+  composeJSON: ComposeJSON
   envJSON?: Record<string, string>
 }) {
-  if (!composeJSON || !envJSON) {
-    return null
-  }
-
   const title = getAppTitle(composeJSON)
   const logo = getAppLogo(composeJSON)
   const serviceKey = getServiceKey(composeJSON)
-  const { COMPOSE_FILE, COMPOSE_PATH_SEPARATOR } = envJSON
+  const { COMPOSE_FILE, COMPOSE_PATH_SEPARATOR } = envJSON || {}
   const files = COMPOSE_FILE?.split(COMPOSE_PATH_SEPARATOR) || []
-  const enabled = files.includes(filename)
+  const enabled = files.length ? files.includes(filename) : true
 
   return { title, logo, serviceKey, enabled }
 }
@@ -106,7 +102,11 @@ export async function readConfigFolder() {
           composeJSON: ymlContentMap.get(y)!,
           envJSON: envFileContent,
         })
-      }))
+      })).sort((a, b) => {
+        const aNum = Number(a.extra?.enabled)
+        const bNum = Number(b.extra?.enabled)
+        return bNum - aNum
+      })
     }
   })
 
@@ -127,7 +127,6 @@ export async function readConfigFolder() {
         extra: getComposeJSONExtra({
           filename: path.relative(folder, y),
           composeJSON: ymlContentMap.get(y)!,
-          envJSON: {},
         })
       }],
     }

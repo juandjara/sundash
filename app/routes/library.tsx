@@ -1,4 +1,5 @@
-import { useLoaderData } from "@remix-run/react"
+import { Link, useLoaderData } from "@remix-run/react"
+import clsx from "clsx"
 import AppCard from "~/components/AppCard"
 import Layout from "~/components/layout"
 import { getAllContainers } from "~/lib/docker.server"
@@ -44,13 +45,17 @@ export default function Library() {
         </p>
       </div>
       {libraryProjects.map((project) => (
-        <section key={project.folder} className="mb-6">
-          <a href={`/library/${project.key}`}>
-            <h3 className="border-b mb-2 pt-1 pb-2 px-1.5 hover:bg-gray-100/75 transition-colors rounded-t-lg">
-              <p className="text-xl font-bold"> {project.key} </p>
-              <p className="text-sm text-gray-500"> {formatFolder(project)} </p>
-            </h3>
-          </a>
+        <section key={project.folder} className={clsx(
+          'mb-6 px-2 rounded-lg relative',
+          'shadow-none hover:bg-red-50/50 hover:shadow hover:shadow-pink-100 transition-all'
+        )}>
+          <Link to={`/library/${project.key}`} className="absolute inset-0">
+            <span className="sr-only">{project.key}</span>
+          </Link>
+          <h3 className="border-b mb-2 pt-1 pb-2 px-1.5">
+            <p className="text-xl font-bold"> {project.key} </p>
+            <p className="text-sm text-gray-500"> {formatFolder(project)} </p>
+          </h3>
           <ul className="py-2 flex flex-wrap justify-start gap-4">
             {project.ymlFiles.map(({ path, content, extra }) => {
               const { State, Status } = getContainerForService(extra?.serviceKey) || {}
@@ -62,6 +67,7 @@ export default function Library() {
                   logo={extra?.logo || ''}
                   state={State}
                   status={Status}
+                  enabled={extra?.enabled}
                 />
               )
             })}

@@ -9,18 +9,28 @@ type ContainerCardProps = {
   link?: string
   status?: string
   state?: ContainerState
-  logo: string
   title: string
+  logo: string
+  enabled?: boolean
   as?: JSX.ElementType
 }
 
-export default function AppCard({ link, status, state, title, logo, as: Component = 'li' }: ContainerCardProps) {
+export default function AppCard({
+  link,
+  status,
+  state,
+  title,
+  logo,
+  enabled = true,
+  as: Component = 'li'
+}: ContainerCardProps) {
   return (
     <Component
       className={clsx(
         {
           'group hover:shadow-md transition-shadow': !!link,
-          'pointer-events-none': !link
+          'pointer-events-none': !link,
+          'opacity-50': !enabled
         },
         'bg-white relative shadow',
         ' flex flex-col place-items-center border border-zinc-200 py-3 rounded-xl w-40'
