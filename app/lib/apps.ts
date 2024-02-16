@@ -3,8 +3,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import YAML from 'yaml'
 import type { PsService} from "./docker.server"
-import { getAllContainers, getComposeConfig, getPS } from "./docker.server"
-import { getComposeFiles } from "./envfile.server"
+import { getPS } from "./docker.server"
 import type Dockerode from "dockerode"
 
 export type XSundash = {
@@ -77,7 +76,7 @@ export function validateComposeJSON(app: ComposeJSON) {
 }
 
 export async function getApp(filename: string, yaml: string) {
-  const composeFiles = await getComposeFiles()
+  const composeFiles = [] as string[]  // await getComposeFiles()
   const app = YAML.parse(yaml) as ComposeJSON
   if (!validateComposeJSON(app)) {
     throw new Error(`Invalid YAML: \n${yaml}`)
@@ -123,7 +122,7 @@ export type Project = {
 
 export async function getApps() {
   const configFolder = env.configFolder
-  const composeFiles = await getComposeFiles()
+  const composeFiles = [] as string[] // await getComposeFiles()
   const dir = await fs.readdir(configFolder)
   const ymls = dir.filter((d) => path.extname(d) === '.yml')
   const promises = ymls.map((y) => fs.readFile(path.join(configFolder, y), 'utf-8'))

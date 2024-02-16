@@ -3,8 +3,12 @@ import { getAllContainers } from "./docker.server"
 import { type IDockerComposeResult, v2 as compose } from 'docker-compose'
 import { emitter } from "./emitter.server"
 import { ComposeLabels } from "./docker.util"
-import path from 'node:path'
 import env from "./env.server"
+import path from 'node:path'
+import fs from 'node:fs/promises'
+import { redirect } from "@remix-run/node"
+import { removeFromDotEnv } from "./envfile.server"
+import fileExists from "./fileExists"
 
 export type BaseProject = {
   dir: string
@@ -119,6 +123,7 @@ export async function getComposeLogs({
   return msg
 }
 
+export type FileOperation = 'delete' | 'enable' | 'disable'
 export type ComposeOperation = 'up' | 'down' | 'restart' | 'pull' | 'stop' | 'start'
 
 export async function handleComposeOperation({
@@ -157,4 +162,44 @@ export async function handleComposeOperation({
     }
     return parseComposeResult(err as any)
   }
+}
+
+function isSubDirectory(parent: string, child: string) {
+  return path.relative(child, parent).startsWith('..')
+}
+
+export async function deleteProject(projectFolder: string) {
+  if (!isSubDirectory(env.configFolder, projectFolder)) {
+    throw new Error(`Invalid project folder: ${projectFolder}. Must be a subdirectory of ${env.configFolder}`)
+  }
+  const fullPath = path.join(env.configFolder, projectFolder)
+  const exists = await fileExists(fullPath)
+  if (!exists) {
+    throw new Error(`Folder not found: ${fullPath}`)
+  }
+
+  await fs.rm(fullPath, { recursive: true })
+
+  throw redirect('/')
+}
+
+export async function deleteProjectFile(projectKey: string, projectFolder: string, file: string) {
+  if (!isSubDirectory(env.configFolder, projectFolder)) {
+    throw new Error(`Invalid project folder: ${projectFolder}. Must be a subdirectory of ${env.configFolder}`)
+  }
+  if (!isSubDirectory(projectFolder, file!)) {
+    throw new Error(`Invalid file path: ${file}. Must be a subdirectory of ${projectFolder}`)
+  }
+  const fullPath = path.join(env.configFolder, projectFolder, file)
+  const exists = await fileExists(fullPath)
+  if (!exists) {
+    throw new Error(`File not found: ${fullPath}`)
+  }
+
+  await Promise.all([
+    removeFromDotEnv(projectFolder, file),
+    fs.rm(fullPath, { recursive: true })
+  ])
+
+  throw redirect(`/library/${projectKey}`)
 }

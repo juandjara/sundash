@@ -38,10 +38,7 @@ const PRIVATE_PREFIX = '_'
 export type LibraryProject = {
   key: string
   folder: string
-  envFile: {
-    path: string
-    content: Record<string, string> | undefined
-  } | null
+  env: Record<string, string> | null
   ymlFiles: {
     path: string
     content: ComposeJSON | undefined
@@ -60,7 +57,7 @@ export async function readConfigFolder() {
 
   for (const file of ls) {
     const name = path.basename(file)    
-    if (name.startsWith('.env')) {
+    if (name === '.env') {
       const envText = await fs.readFile(path.join(env.configFolder, file), 'utf-8')
       const envJSON = parseEnvFileText(envText)
       envContentMap.set(file, envJSON)
@@ -83,20 +80,17 @@ export async function readConfigFolder() {
   const projectFolders = [...new Set(envFiles.map((f) => path.dirname(f)))]
   const envProjects = projectFolders.map((f) => {
     const name = path.basename(f)
-    const envFile = envFiles.find((e) => e === path.join(f, '.env'))!
+    const envFile = path.join(f, '.env')
 
     const ymls = ymlFiles.filter((e) => e.startsWith(f))
     usedYmls.push(...ymls)
 
-    const envFileContent = envContentMap.get(envFile)!
+    const envFileContent = envContentMap.get(envFile)
 
     return {
       key: envFileContent?.COMPOSE_PROJECT_NAME || name,
+      env: envFileContent || null,
       folder: f,
-      envFile: {
-        path: path.relative(f, envFile),
-        content: envFileContent,
-      },
       ymlFiles: ymls.map((y) => ({
         path: path.relative(f, y),
         content: ymlContentMap.get(y)!,
@@ -110,7 +104,7 @@ export async function readConfigFolder() {
         const bNum = Number(b.meta?.enabled)
         return bNum - aNum
       })
-    }
+    } satisfies LibraryProject
   })
 
   const notUsedYmls = ymlFiles.filter((y) => !usedYmls.includes(y))
@@ -121,8 +115,8 @@ export async function readConfigFolder() {
 
     return {
       key: name,
+      env: null,
       folder,
-      envFile: null,
       ymlFiles: [{
         path: path.relative(folder, y),
         content: ymlContentMap.get(y)!,
@@ -131,7 +125,7 @@ export async function readConfigFolder() {
           composeJSON: ymlContentMap.get(y)!,
         })
       }],
-    }
+    } satisfies LibraryProject
   })
 
   const projects = [...envProjects, ...singleFileProjects]
