@@ -49,15 +49,27 @@ export async function loader({ request, params }: LoaderArgs) {
     return true
   }) || []
 
-  const envFiles = Array.from(new Set([
-    libraryProject?.envFile?.path,
-    ...project?.envFiles.map((file) => path.relative(project?.dir, file)) || [],
-  ].filter(Boolean) as string[]))
+  const envFiles = new Set(
+    libraryProject?.envFile?.path
+      ? [libraryProject?.envFile?.path]
+      : []
+  )
+  
+  if (project?.envFiles.length) {
+    for (const file of project.envFiles) {
+      envFiles.add(path.relative(project.dir, file))
+    }
+  }
 
-  const configFiles = Array.from(new Set([
-    ...ymlFiles.map((file) => file.path) || [],
-    ...project?.configFiles.map((file) => path.relative(project.dir, file)) || [],
-  ].filter(Boolean)))
+  const configFiles = new Set(ymlFiles.map((file) => file.path))
+  if (project) {
+    for (const file of project.configFiles) {
+      const relFile = path.relative(project.dir, file)
+      if (!urlFile || relFile === urlFile) {
+        configFiles.add(relFile)
+      }
+    }
+  }
 
   const services = getDetailedServices(
     ymlFiles,
@@ -91,8 +103,8 @@ export async function loader({ request, params }: LoaderArgs) {
     project: {
       key,
       dir: project?.dir || libraryProject?.folder || '',
-      envFiles,
-      configFiles,
+      envFiles: Array.from(envFiles),
+      configFiles: Array.from(configFiles),
       services: filteredServices,
       numServices: services.length,
     }
@@ -147,6 +159,7 @@ export default function ProjectDetail() {
 
   const logs = useLogs(logKey, initialLogs)
   const isRunning = project.services.some((s) => s.state === 'running')
+  const hasContainer = project.services.some((s) => s.state)
   const revalidator = useRevalidator()
   const subtitle = urlService || urlFile || ''
   const service = project.services.length === 1 ? project.services[0] : null
@@ -190,7 +203,7 @@ export default function ProjectDetail() {
               ? (
                 service?.enabled ? (
                   <button
-                    aria-disabled={busy}
+                    aria-disabled={busy || hasContainer}
                     name="op"
                     value="disable"
                     className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
@@ -200,7 +213,7 @@ export default function ProjectDetail() {
                   </button>
                 ) : (
                   <button
-                    aria-disabled={busy}
+                    aria-disabled={busy || hasContainer}
                     name="op"
                     value="enable"
                     className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
@@ -212,7 +225,7 @@ export default function ProjectDetail() {
               ) : null}
             {service ? (
               <button
-                aria-disabled={busy}
+                aria-disabled={busy || hasContainer}
                 name="op"
                 value="delete"
                 onClick={(ev) => {
@@ -234,29 +247,29 @@ export default function ProjectDetail() {
             ) : null}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <button name="op" value="up" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+            <button aria-disabled={busy} name="op" value="up" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
               <ArrowUpTrayIcon className="w-5 h-5" />
               <p>Up</p>
             </button>
-            <button name="op" value="down" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+            <button aria-disabled={busy} name="op" value="down" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
               <ArrowDownTrayIcon className="w-5 h-5" />
               <p>Down</p>
             </button>
-            <button name="op" value="pull" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+            <button aria-disabled={busy} name="op" value="pull" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
               <CloudArrowDownIcon className="w-5 h-5" />
               <p>Pull</p>
             </button>
-            <button name="op" value="restart" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+            <button aria-disabled={busy} name="op" value="restart" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
               <ArrowPathIcon className="w-5 h-5" />
               <p>Restart</p>
             </button>
             {isRunning ? (
-              <button name="op" value="stop" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+              <button aria-disabled={busy} name="op" value="stop" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
                 <StopIcon className="w-5 h-5" />
                 <p>Stop</p>
               </button>
             ) : (
-              <button name="op" value="start" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
+              <button aria-disabled={busy} name="op" value="start" className={clsx(buttonCN.small, buttonCN.outline, buttonCN.iconLeft)}>
                 <PlayIcon className="w-5 h-5" />
                 <p>Start</p>
               </button>
