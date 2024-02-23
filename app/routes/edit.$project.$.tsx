@@ -8,7 +8,7 @@ import env from "~/lib/env.server"
 import { readConfigFolder } from "~/lib/library.server"
 import { buttonCN, inputCN } from "~/lib/styles"
 import YAML from 'yaml'
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { envToText } from "~/lib/envfile.server"
 import LabelEditorDialog from "~/components/LabelEditorDialog"
 
@@ -71,15 +71,17 @@ export async function loader({ request, params }: LoaderArgs) {
 
 export default function EditFile() {
   const { folder, file, key, type } = useLoaderData<typeof loader>()
+  const [name, setName] = useState(file.path)
   const [text, setText] = useState(file.text)
   const [drawerOpen, setDrawerOpen] = useState(false)
-
+  const formRef = useRef<HTMLFormElement>(null)
   const navigate = useNavigate()
 
   const transition = useNavigation()
   const busy = transition.state !== 'idle'
 
   function resetForm() {
+    setName(file.path)
     setText(file.text)
   }
 
@@ -101,14 +103,16 @@ export default function EditFile() {
           </p>
         </div>
       </div>
-      <Form method="POST" className="relative z-10">
+      <Form ref={formRef} method="POST" className="relative z-10">
         <input type="hidden" name="projectKey" value={key} />
         <div className="mb-6">
           <label className="text-zinc-500 mb-1 block" htmlFor="filename">File name</label>
           <input
             name="filename"
             className={clsx(inputCN, 'bg-zinc-50 px-2 py-1')}
-            defaultValue={file.path}
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
         </div>
         {type === 'yml' && (
@@ -130,6 +134,7 @@ export default function EditFile() {
             onChange={(e) => setText(e.target.value)}
             autoComplete="off"
             spellCheck="false"
+            required
           />
           <LabelEditorDialog
             open={drawerOpen}
