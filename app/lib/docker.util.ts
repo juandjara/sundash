@@ -4,7 +4,7 @@ import type { ContainerState } from "./docker.server"
 export enum SundashLabels {
   LOGO = 'dev.sundash.logo',
   TITLE = 'dev.sundash.title',
-  MAIN = 'dev.sundash.is_main_container',
+  ENABLE = 'dev.sundash.enable',
 }
 
 export enum ComposeLabels {
@@ -13,6 +13,12 @@ export enum ComposeLabels {
   PROJECT_CONFIG_FILES = 'com.docker.compose.project.config_files',
   PROJECT_ENV_FILES = 'com.docker.compose.project.environment_file',
   SERVICE = 'com.docker.compose.service',
+}
+
+export enum CaddyLabels {
+  CADDY_URL = 'caddy',
+  CADDY_PROXY_PORT = 'caddy.reverse_proxy',
+  CADDY_AUTH = 'caddy.authorize',
 }
 
 export function defaultLogo(service: string) {

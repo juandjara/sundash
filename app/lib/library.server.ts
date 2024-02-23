@@ -166,7 +166,7 @@ export function getDetailedServices(ymlFiles: LibraryProject['ymlFiles'], contai
             return true
           }
 
-          return value?.labels?.[SundashLabels.MAIN] === 'true' || i === 0
+          return value?.labels?.[SundashLabels.ENABLE] === 'true' || i === 0
         })
         .map(([key, value]) => {
           const title = value?.labels?.[SundashLabels.TITLE] || key
