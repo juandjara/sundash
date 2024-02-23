@@ -2,7 +2,7 @@ import env from "./env.server"
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import YAML from 'yaml'
-import { type ComposeJSON, validateComposeJSON, getAppTitle, getAppLogo, getServiceKey } from "./apps"
+import { type ComposeJSON, validateComposeJSON } from "./apps"
 import { parseEnvFileText } from "./envfile.server"
 import type Dockerode from "dockerode"
 import { type ContainerState } from "./docker.server"
@@ -13,9 +13,15 @@ function getComposeJSONMeta({ filename, composeJSON, envJSON }: {
   composeJSON: ComposeJSON
   envJSON?: Record<string, string>
 }) {
-  const title = getAppTitle(composeJSON)
-  const logo = getAppLogo(composeJSON)
-  const serviceKey = getServiceKey(composeJSON)
+  const serviceKeys = Object.keys(composeJSON.services || {})
+  const serviceKey = serviceKeys.find((key) => {
+    const service = composeJSON.services[key]
+    return service?.labels?.[SundashLabels.ENABLE] === 'true'
+  }) || serviceKeys[0]
+  const service = composeJSON.services[serviceKey]
+  const title = service?.labels?.[SundashLabels.TITLE] || serviceKey
+  const logo = service?.labels?.[SundashLabels.LOGO] || defaultLogo(serviceKey)
+
   const { COMPOSE_FILE, COMPOSE_PATH_SEPARATOR } = envJSON || {}
   const files = COMPOSE_FILE?.split(COMPOSE_PATH_SEPARATOR) || []
   const enabled = files.length ? files.includes(filename) : true
@@ -154,51 +160,51 @@ export function getDetailedServices(ymlFiles: LibraryProject['ymlFiles'], contai
     state: ContainerState
     status: string
     enabled: boolean
+    file: string
   }[]
   
   const shouldExpandServices = ymlFiles.length === 1
 
   if (ymlFiles.length > 0) {
     services = ymlFiles.map((yml) => {
-      return Object.entries(yml.content!.services)
-        .filter(([key, value], i) => {
-          if (shouldExpandServices) {
-            return true
-          }
+      const entries = Object.entries(yml.content!.services)
+      let serviceEntries = entries.filter(([_, value]) => {
+        return value?.labels?.[SundashLabels.ENABLE] === 'true'
+      })
+      if (serviceEntries.length === 0) {
+        serviceEntries = [entries[0]]
+      }
+      if (shouldExpandServices) {
+        serviceEntries = entries
+        console.log({
+          entries,
+          serviceEntries
+        })
+      }
 
-          return value?.labels?.[SundashLabels.ENABLE] === 'true' || i === 0
-        })
-        .map(([key, value]) => {
-          const title = value?.labels?.[SundashLabels.TITLE] || key
-          const logo = value?.labels?.[SundashLabels.LOGO] || defaultLogo(key)
-          const state = containerServiceMap[key]?.State
-          const status = containerServiceMap[key]?.Status
-          const enabled = yml.meta.enabled
-          return {
-            key,
-            logo,
-            title,
-            state,
-            status,
-            enabled,
-          }
-        })
-    })
-    .flat()
+      return serviceEntries.map(([key, value]) => {
+        return {
+          key,
+          logo: value?.labels?.[SundashLabels.LOGO] || defaultLogo(key),
+          title: value?.labels?.[SundashLabels.TITLE] || key,
+          state: containerServiceMap[key]?.State,
+          status: containerServiceMap[key]?.Status,
+          enabled: yml.meta.enabled,
+          file: yml.path,
+        }
+      })
+    }).flat()
   } else if (containers.length > 0) {
     services = containers.map((container) => {
       const key = container.Labels[ComposeLabels.SERVICE]
-      const title = container.Labels[SundashLabels.TITLE] || key
-      const logo = container.Labels[SundashLabels.LOGO] || defaultLogo(title)
-      const state = container.State
-      const status = container.Status
       return {
         key,
-        logo,
-        title,
-        state,
-        status,
+        logo: container.Labels[SundashLabels.LOGO] || defaultLogo(key),
+        title: container.Labels[SundashLabels.TITLE] || key,
+        state: container.State,
+        status: container.Status,
         enabled: true,
+        file: '',
       }
     })
   }
