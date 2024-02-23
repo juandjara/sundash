@@ -1,3 +1,4 @@
+import { PlusIcon } from "@heroicons/react/24/outline"
 import { Link, useLoaderData } from "@remix-run/react"
 import clsx from "clsx"
 import AppCard from "~/components/AppCard"
@@ -5,6 +6,7 @@ import Layout from "~/components/layout"
 import { getProjectsFromContainers } from "~/lib/compose.server"
 import { ComposeLabels, SundashLabels, defaultLogo } from "~/lib/docker.util"
 import { type LibraryProject, readConfigFolder } from "~/lib/library.server"
+import { buttonCN } from "~/lib/styles"
 
 export async function loader() {
   const [libraryProjects, runningProjects] = await Promise.all([
@@ -54,18 +56,26 @@ export default function Library() {
 
   return (
     <Layout>
-      <h2 className="mb-3">
-        <span className="text-3xl font-semibold">App Library</span>
-        <span className="ml-2 text-sm text-gray-500">{libraryProjects.length} projects</span>
-      </h2>
-      <div className="mb-6 max-w-prose">
-        <p className="mb-2">
-          This page lists all the projects in the app library. Each project is a folder in the <code>config</code> directory that contains a <code>.env</code> file and one or more <code>.yml</code> files. Each <code>.yml</code> file is a Docker Compose file that defines a set of services.
-        </p>
-        <p>
-          Each <code>.yml</code> file not associated with a <code>.env</code> file is shown as a standalone project.
-        </p>
-      </div>
+      <header className="mb-6 flex flex-wrap gap-2 justify-between items-end">
+        <div>
+          <h2 className="mb-3">
+            <span className="text-3xl font-semibold">App Library</span>
+            <span className="ml-2 text-sm text-gray-500">{libraryProjects.length} projects</span>
+          </h2>
+          <div className="max-w-prose">
+            <p className="mb-2">
+              This page lists all the projects in the app library. Each project is a folder in the <code>config</code> directory that contains a <code>.env</code> file and one or more <code>.yml</code> files. Each <code>.yml</code> file is a Docker Compose file that defines a set of services.
+            </p>
+            <p>
+              Each <code>.yml</code> file not associated with a <code>.env</code> file is shown as a standalone project.
+            </p>
+          </div>
+        </div>
+        {/* <button className={clsx(buttonCN.normal, buttonCN.primary, buttonCN.iconLeft)}>
+          <PlusIcon className="w-6 h-6" />
+          <p>New project</p>
+        </button> */}
+      </header>
       {libraryProjects.map((project) => (
         <section key={project.folder} className={clsx(
           'mb-6 px-2 rounded-lg relative',

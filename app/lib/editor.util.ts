@@ -28,7 +28,7 @@ export function getPortFromPortString(portStr: string) {
   return port
 }
 
-type EditorEnv = {
+export type EditorEnv = {
   baseAppsDomain: string
   authorizeConfig: string
   dockerProxyNetwork: string

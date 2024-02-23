@@ -1,5 +1,6 @@
-import { ArrowPathIcon, PlusIcon } from "@heroicons/react/20/solid"
+import { ArrowPathIcon } from "@heroicons/react/20/solid"
 import {
+  PlusIcon,
   PencilIcon,
   TrashIcon,
   MinusCircleIcon,
@@ -264,7 +265,7 @@ export default function ProjectDetail() {
               <Link to={`/edit/${project.key}/new`}>
                 <button className={clsx(buttonCN.normal, buttonCN.primary, buttonCN.iconLeft)}>
                   <PlusIcon className="w-6 h-6" />
-                  <p>New</p>
+                  <p>New file</p>
                 </button>
               </Link>
             )}
