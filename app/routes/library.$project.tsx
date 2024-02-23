@@ -114,6 +114,7 @@ export async function loader({ request, params }: LoaderArgs) {
       configFiles: Array.from(configFiles),
       services: filteredServices,
       numServices: services.length,
+      source: libraryProject ? 'library' : 'containers'
     }
   }
 }
@@ -225,6 +226,17 @@ export default function ProjectDetail() {
     </button>
   )
 
+  const editButton = (
+    <button
+      type="button"
+      aria-disabled={project.source !== 'library'}
+      className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
+    >
+      <PencilIcon className="w-5 h-5" />
+      <p>Edit</p>
+    </button>
+  )
+
   return (
     <Layout>
       <Link to={subtitle ? `/library/${project.key}` : '/'}>
@@ -249,15 +261,15 @@ export default function ProjectDetail() {
           <input type="hidden" name="folder" value={project.dir} />
           <div className="flex flex-wrap items-center justify-end gap-2 mb-2">
             {project.configFiles.length === 1 ? (
-              <Link to={`/edit/${project.key}/${project.configFiles[0]}?type=yml`}>
-                <button
-                  type="button"
-                  className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
-                >
-                  <PencilIcon className="w-5 h-5" />
-                  <p>Edit</p>
-                </button>
-              </Link>
+              project.source === 'library' ? (
+                <Link to={`/edit/${project.key}/${project.configFiles[0]}?type=yml`}>
+                  {editButton}
+                </Link>
+              ) : (
+                <Tooltip position="left" title="Edit not available for projects outside library">
+                  {editButton}
+                </Tooltip>
+              )
             ) : null}
             {service && areFilesDefinedByEnv ? (
               service?.enabled ? (
@@ -283,7 +295,7 @@ export default function ProjectDetail() {
               )
             ) : null}
             {hasContainer ? (
-              <Tooltip title="Cannot delete a project with a running container">{deleteButton}</Tooltip>
+              <Tooltip position="left" title="Cannot delete a project with a running container">{deleteButton}</Tooltip>
             ) : deleteButton}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">

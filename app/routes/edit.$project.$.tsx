@@ -12,10 +12,13 @@ import YAML from 'yaml'
 import { Fragment, useState } from "react"
 import { Transition } from "@headlessui/react"
 import { applyProxyConfig, getEditorData } from "~/lib/editor.util"
+import { envToText } from "~/lib/envfile.server"
 
 export async function loader({ request, params }: LoaderArgs) {
   const key = params.project
   const filePath = params['*']
+  const type = new URL(request.url).searchParams.get('type') as 'yml' | 'env'
+
   const library = await readConfigFolder()
   const project = library.find((l) => l.key === key)
 
@@ -23,7 +26,24 @@ export async function loader({ request, params }: LoaderArgs) {
     throw new Response(`Project ${key} not found`, { status: 404 })
   }
 
-  const file = project.ymlFiles.find((y) => y.path === filePath)
+  let file
+  if (type === 'yml') {
+    const ymlFile = project.ymlFiles.find((y) => y.path === filePath)
+    if (ymlFile) {
+      file = {
+        path: ymlFile.path,
+        text: YAML.stringify(ymlFile.content),
+      }
+    }
+  }
+
+  if (type === 'env' && project.env) {
+    file = {
+      path: '.env',
+      text: envToText(project.env),
+    }
+  }
+
   if (!file) {
     throw new Response(`File ${filePath} not found`, { status: 404 })
   }
@@ -33,10 +53,8 @@ export async function loader({ request, params }: LoaderArgs) {
   return {
     key,
     folder: project.folder,
-    file: {
-      path: file.path,
-      text: YAML.stringify(file.content),
-    },
+    file,
+    type,
     networkExists,
     editorEnv: {
       dockerProxyNetwork: env.dockerProxyNetwork,
@@ -174,7 +192,7 @@ function LabelEditor({ text, onClose, onConfirm }: {
 }
 
 export default function EditFile() {
-  const { folder, file, key } = useLoaderData<typeof loader>()
+  const { folder, file, key, type } = useLoaderData<typeof loader>()
   const [text, setText] = useState(file.text)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -253,14 +271,16 @@ export default function EditFile() {
         <Form method="POST" className="flex-grow">
           <input type="hidden" name="projectKey" value={key} />
           <input type="hidden" name="file" value={file.path} />
-          <button
-            type="button"
-            className={clsx('mb-3', buttonCN.small, buttonCN.iconLeft, buttonCN.outline)}
-            onClick={() => setDrawerOpen(!drawerOpen)}
-          >
-            <AdjustmentsVerticalIcon className="w-5 h-5" />
-            <p>Edit proxy config</p>
-          </button>
+          {type === 'yml' && (
+            <button
+              type="button"
+              className={clsx('mb-3', buttonCN.small, buttonCN.iconLeft, buttonCN.outline)}
+              onClick={() => setDrawerOpen(!drawerOpen)}
+            >
+              <AdjustmentsVerticalIcon className="w-5 h-5" />
+              <p>Edit proxy config</p>
+            </button>
+          )}
           <div className="mb-4 relative z-10">
             <textarea
               className={clsx('h-[500px] bg-zinc-50 font-mono p-3', inputCN)}

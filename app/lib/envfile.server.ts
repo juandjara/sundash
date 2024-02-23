@@ -14,6 +14,12 @@ export function parseEnvFileText(envText: string) {
   return envVars
 }
 
+export function envToText(envVars: Record<string, string>) {
+  return Object.entries(envVars)
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n')
+}
+
 export async function readEnvFile(projectFolder: string) {
   const text = await fs.readFile(
     path.join(env.configFolder, projectFolder, '.env'),
@@ -37,13 +43,11 @@ export async function addToDotEnv(projectFolder: string, filename: string) {
   const composeFiles = new Set(fileListText.split(separator))
   composeFiles.add(filename)
 
-  const newDotEnv = Object.entries({
+  const newDotEnv = envToText({
     ...configFolderENV,
     COMPOSE_PATH_SEPARATOR: separator,
     COMPOSE_FILE: Array.from(composeFiles).join(separator),
   })
-    .map(([key, value]) => `${key}=${value}`)
-    .join('\n')
 
   await fs.writeFile(
     path.join(env.configFolder, projectFolder, '.env'),
@@ -64,13 +68,11 @@ export async function removeFromDotEnv(projectFolder: string, filename: string) 
   const composeFiles = new Set(fileListText.split(separator))
   composeFiles.delete(filename)
 
-  const newDotEnv = Object.entries({
+  const newDotEnv = envToText({
     ...configFolderENV,
     COMPOSE_PATH_SEPARATOR: separator,
     COMPOSE_FILE: Array.from(composeFiles).join(separator),
   })
-    .map(([key, value]) => `${key}=${value}`)
-    .join('\n')
 
   await fs.writeFile(
     path.join(env.configFolder, projectFolder, '.env'),
