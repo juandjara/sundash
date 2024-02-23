@@ -12,17 +12,21 @@ import { useRef, useState } from "react"
 import { envToText } from "~/lib/envfile.server"
 import LabelEditorDialog from "~/components/LabelEditorDialog"
 import { deleteProjectFile, saveFile } from "~/lib/compose.server"
+import { getComposeTemplate, getTemplate } from "~/lib/appstore"
+
+type EditorFileType = 'yml' | 'env' | 'appstore'
 
 export async function loader({ request, params }: LoaderArgs) {
   const key = params.project
   const filePath = params['*']
-  const type = (new URL(request.url).searchParams.get('type') || 'yml') as 'yml' | 'env'
+  const sp = new URL(request.url).searchParams
+  const type = (sp.get('type') || 'yml') as EditorFileType
 
   const library = await readConfigFolder()
   const project = library.find((l) => l.key === key)
 
   if (!project) {
-    throw new Response(`Project ${key} not found`, { status: 404 })
+    throw new Response(`Project ${key} not found`, { status: 404, statusText: 'Not found' })
   }
 
   let file
@@ -30,6 +34,21 @@ export async function loader({ request, params }: LoaderArgs) {
     file = {
       path: '',
       text: 'version: "3.8"\nservices:\n  app:\n    image: node:lts\n    command: ["node", "--version"]\n',
+    }
+
+    if (type === 'appstore') {
+      const index = sp.get('index')
+      const template = await getTemplate(Number(index))
+
+      if (!template) {
+        throw new Response('Appstore template not found', { status: 404, statusText: 'Not found' })
+      }
+
+      const text = await getComposeTemplate(template)
+      file = {
+        path: `${template.name}.yml`,
+        text
+      }
     }
   }
 
@@ -76,7 +95,7 @@ export async function action({ request }: ActionArgs) {
   const filename = data.get('filename') as string
   const prev_filename = data.get('prev_filename') as string
   const compose = data.get('compose') as string
-  const type = data.get('type') as 'yml' | 'env'
+  const type = data.get('type') as EditorFileType
 
   const library = await readConfigFolder()
   const project = library.find((l) => l.key === key)
@@ -85,8 +104,8 @@ export async function action({ request }: ActionArgs) {
     throw new Response(`Project ${key} not found`, { status: 404 })
   }
 
-  if (prev_filename && prev_filename !== filename) {
-    await deleteProjectFile(key, project.folder, prev_filename)
+  if (type !== 'appstore' && prev_filename && prev_filename !== filename) {
+    await deleteProjectFile(project.folder, prev_filename)
   }
 
   await saveFile({
@@ -124,10 +143,7 @@ export default function EditFile() {
             Editor
           </h2>
           <p className="text-lg text-gray-500">
-            {folder}/{file.path}
-          </p>
-          <p className="text-lg">
-            Here you can edit and review your docker compose template before deploying it to your server.
+            {folder}/{file.path || 'new'}
           </p>
         </div>
       </div>
@@ -146,7 +162,7 @@ export default function EditFile() {
             placeholder="docker-compose.yml"
           />
         </div>
-        {type === 'yml' && (
+        {type !== 'env' && (
           <button
             type="button"
             className={clsx('mb-3', buttonCN.small, buttonCN.iconLeft, buttonCN.outline)}
