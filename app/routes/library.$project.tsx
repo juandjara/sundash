@@ -1,4 +1,4 @@
-import { ArrowPathIcon } from "@heroicons/react/20/solid"
+import { ArrowPathIcon, PlusIcon } from "@heroicons/react/20/solid"
 import {
   PencilIcon,
   TrashIcon,
@@ -260,6 +260,14 @@ export default function ProjectDetail() {
           <input type="hidden" name="areFilesDefinedByEnv" value={Number(areFilesDefinedByEnv)} />
           <input type="hidden" name="folder" value={project.dir} />
           <div className="flex flex-wrap items-center justify-end gap-2 mb-2">
+            {!service && (
+              <Link to={`/edit/${project.key}/new`}>
+                <button className={clsx(buttonCN.normal, buttonCN.primary, buttonCN.iconLeft)}>
+                  <PlusIcon className="w-6 h-6" />
+                  <p>New</p>
+                </button>
+              </Link>
+            )}
             {project.configFiles.length === 1 ? (
               project.source === 'library' ? (
                 <Link to={`/edit/${project.key}/${project.configFiles[0]}?type=yml`}>
