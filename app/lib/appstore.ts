@@ -4,11 +4,11 @@ const TEMPLATES_URL = 'https://templates-portainer.ibaraki.app'
 // const TEMPLATES_URL = 'https://raw.githubusercontent.com/SelfhostedPro/selfhosted_templates/master/Template/yacht.json'
 
 type GetTemplatesParams = {
-  query: string
-  category: string
+  query?: string
+  category?: string
 }
 
-export async function getTemplates({ query, category }: GetTemplatesParams) {
+export async function getTemplates({ query = '', category }: GetTemplatesParams) {
   const res = await fetch(TEMPLATES_URL)
   if (!res.ok) {
     throw new Error('Failed to fetch templates')
@@ -17,23 +17,26 @@ export async function getTemplates({ query, category }: GetTemplatesParams) {
   const data = await res.json()
   const templates: Template[] = Array.isArray(data) ? data : data.templates
 
-  const filtered = templates.filter((t) => {
-    const baseFilter = t.platform === 'linux' // && t.type === 1
-    const regex = new RegExp(query, 'i')
-    const queryFilter = query
-      ? regex.test(t.title) || regex.test(t.name || '') || regex.test(t.description || '') || regex.test(t.note || '')
-      : true
-    const categoryFilter = category ? t.categories?.includes(category) : true
+  const filtered = templates
+    .map((t, i) => ({ ...t, index: i }))
+    .filter((t) => {
+      const baseFilter = t.platform === 'linux' // && t.type === 1
+      const regex = new RegExp(query, 'i')
+      const queryFilter = query
+        ? regex.test(t.title) || regex.test(t.name || '') || regex.test(t.description || '') || regex.test(t.note || '')
+        : true
+      const categoryFilter = category ? t.categories?.includes(category) : true
 
-    return baseFilter && queryFilter && categoryFilter
-  }).sort((a, b) => a.title.localeCompare(b.title))
+      return baseFilter && queryFilter && categoryFilter
+    })
+    .sort((a, b) => a.title.localeCompare(b.title))
 
   return filtered
 }
 
-export async function getTemplate({ query, category, open }: GetTemplatesParams & { open: number }) {
-  const templates = await getTemplates({ query, category })
-  const app = templates[open]
+export async function getTemplate(index: number) {
+  const templates = await getTemplates({})
+  const app = templates.find((t) => t.index === index)
   if (!app) {
     return null
   }
