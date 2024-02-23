@@ -17,8 +17,8 @@ export function getEditorData(yaml: string) {
   }
 }
 
-export function getPortFromPortString(portStr: string) {
-  const portParts = portStr
+export function getPortFromPortLine(portLine: string) {
+  const portParts = portLine
     .replace('/tcp', '')
     .replace('/udp', '')
     .split(':')
@@ -34,17 +34,17 @@ export type EditorEnv = {
   dockerProxyNetwork: string
 }
 
-export function applyProxyConfig(text: string, editorEnv: EditorEnv, editorData: ReturnType<typeof getEditorData>) {
+export function applyProxyConfig(yaml: string, editorEnv: EditorEnv, editorData: ReturnType<typeof getEditorData>) {
   const { baseAppsDomain, authorizeConfig, dockerProxyNetwork } = editorEnv
   const { service, title, logo, hasAuth } = editorData
   try {
-    const compose = YAML.parse(text) as ComposeJSON
+    const compose = YAML.parse(yaml) as ComposeJSON
     const composeService = compose.services[service]
     if (!composeService) {
       throw new Error(`Service "${service}" not found in compose file`)
     }
 
-    const port = getPortFromPortString(composeService.ports?.[0] || '')
+    const port = getPortFromPortLine(composeService.ports?.[0] || '')
     const url = `http://${service}.${baseAppsDomain}`.replace(/\/$/, '')
     
     const labels = {

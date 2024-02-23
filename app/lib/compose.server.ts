@@ -183,14 +183,19 @@ export async function deleteProject(projectFolder: string) {
   throw redirect('/')
 }
 
-export async function deleteProjectFile(projectKey: string, projectFolder: string, file: string) {
+export function getValidEditPath(projectFolder: string, filePath: string) {
   if (!isSubDirectory(env.configFolder, projectFolder)) {
     throw new Error(`Invalid project folder: ${projectFolder}. Must be a subdirectory of ${env.configFolder}`)
   }
-  if (!isSubDirectory(projectFolder, file!)) {
-    throw new Error(`Invalid file path: ${file}. Must be a subdirectory of ${projectFolder}`)
+  if (!isSubDirectory(projectFolder, filePath!)) {
+    throw new Error(`Invalid file path: ${filePath}. Must be a subdirectory of ${projectFolder}`)
   }
-  const fullPath = path.join(env.configFolder, projectFolder, file)
+  const fullPath = path.join(env.configFolder, projectFolder, filePath)
+  return fullPath
+}
+
+export async function deleteProjectFile(projectKey: string, projectFolder: string, file: string) {
+  const fullPath = getValidEditPath(projectFolder, file)
   const exists = await fileExists(fullPath)
   if (!exists) {
     throw new Error(`File not found: ${fullPath}`)
@@ -202,4 +207,14 @@ export async function deleteProjectFile(projectKey: string, projectFolder: strin
   ])
 
   throw redirect(`/library/${projectKey}`)
+}
+
+export async function saveFile({ projectFolder, filePath, compose }: {
+  projectFolder: string
+  filePath: string
+  compose: string
+}) {
+  const fullPath = getValidEditPath(projectFolder, filePath)
+  await fs.writeFile(fullPath, compose)
+  return fullPath
 }

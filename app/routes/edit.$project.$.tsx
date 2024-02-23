@@ -1,5 +1,5 @@
 import { AdjustmentsVerticalIcon, ArrowLeftIcon } from "@heroicons/react/20/solid"
-import type { LoaderArgs } from "@remix-run/node"
+import { redirect, type ActionArgs, type LoaderArgs } from "@remix-run/node"
 import { Form, useLoaderData, useNavigate, useNavigation } from "@remix-run/react"
 import clsx from "clsx"
 import Layout from "~/components/layout"
@@ -11,6 +11,7 @@ import YAML from 'yaml'
 import { useRef, useState } from "react"
 import { envToText } from "~/lib/envfile.server"
 import LabelEditorDialog from "~/components/LabelEditorDialog"
+import { saveFile } from "~/lib/compose.server"
 
 export async function loader({ request, params }: LoaderArgs) {
   const key = params.project
@@ -69,6 +70,29 @@ export async function loader({ request, params }: LoaderArgs) {
   }
 }
 
+export async function action({ request }: ActionArgs) {
+  const data = await request.formData()
+  const key = data.get('projectKey') as string
+  const filename = data.get('filename') as string
+  const compose = data.get('compose') as string
+  const type = data.get('type') as 'yml' | 'env'
+
+  const library = await readConfigFolder()
+  const project = library.find((l) => l.key === key)
+  
+  if (!project) {
+    throw new Response(`Project ${key} not found`, { status: 404 })
+  }
+
+  await saveFile({
+    projectFolder: project.folder,
+    filePath: filename,
+    compose,
+  })
+
+  return redirect(`/edit/${key}/${filename}?type=${type}`)
+}
+
 export default function EditFile() {
   const { folder, file, key, type } = useLoaderData<typeof loader>()
   const [name, setName] = useState(file.path)
@@ -105,6 +129,7 @@ export default function EditFile() {
       </div>
       <Form ref={formRef} method="POST" className="relative z-10">
         <input type="hidden" name="projectKey" value={key} />
+        <input type="hidden" name="type" value={type} />
         <div className="mb-6">
           <label className="text-zinc-500 mb-1 block" htmlFor="filename">File name</label>
           <input

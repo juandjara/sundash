@@ -5,6 +5,8 @@ export default function Tooltip({ title, children, position = 'right' }: {
   position?: 'top' | 'right' | 'bottom' | 'left';
   children: React.ReactNode
 }) {
+  if (!title) return children
+    
   const positionClassMap = {
     top: 'bottom-full left-1/2 transform -translate-x-1/2 -translate-y-1',
     right: 'top-0 left-full transform translate-x-1',

@@ -365,15 +365,12 @@ export default function ProjectDetail() {
             <h3 className="text-xl font-semibold flex-grow mb-2">Config files</h3>
             <ul className="columns-2">
               {project.configFiles.map((file) => (
-                <li key={file}>
-                  <Link
-                    to={`/edit/${project.key}/${file}?type=yml`}
-                    className="group flex gap-2 py-1 pr-2 items-center rounded-md hover:bg-gray-100 transition-colors"
-                  >
-                    <DocumentIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />
-                    <p className="text-gray-600 flex-grow">{file}</p>
-                    <PencilIcon className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </Link>
+                <li key={`${file}?type=yml`}>
+                  <FileListItem
+                    source={project.source}
+                    link={`/edit/${project.key}/${file}?type=yml`}
+                    file={file}
+                  />
                 </li>
               ))}
             </ul>
@@ -383,15 +380,12 @@ export default function ProjectDetail() {
               <h3 className="text-xl font-semibold flex-grow mb-2">Env files</h3>
               <ul className="columns-2">
                 {project.envFiles.map((file) => (
-                  <li key={file}>
-                    <Link
-                      to={`/edit/${project.key}/${file}?type=env`}
-                      className="group flex gap-2 py-1 pr-2 items-center rounded-md hover:bg-gray-100 transition-colors"
-                    >
-                      <DocumentIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />
-                      <p className="text-gray-600 flex-grow">{file}</p>
-                      <PencilIcon className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </Link>
+                  <li key={`${file}?type=env`}>
+                    <FileListItem
+                      source={project.source}
+                      link={`/edit/${project.key}/${file}?type=env`}
+                      file={file}
+                    />
                   </li>
                 ))}
               </ul>
@@ -413,5 +407,35 @@ export default function ProjectDetail() {
         </div>
       </div>
     </Layout>
+  )
+}
+
+function FileListItem({ source, link, file }: { source: string; link: string; file: string }) {
+  let warning = ''
+  if (source !== 'library') {
+    warning = 'Edit not available for projects outside library'
+  }
+  if (link.includes('..')) {
+    warning = 'Cannot edit a file outside project folder'
+  }
+
+  return (
+    <Tooltip
+      position="top"
+      title={warning}
+    >
+      <Link
+        to={link}
+        className={clsx(
+          { 'opacity-50 pointer-events-none': !!warning },
+          'group flex items-start gap-2 py-1 pr-2 rounded-md',
+          'hover:bg-gray-100 transition-colors'
+        )}
+      >
+        <DocumentIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />
+        <p className="text-gray-600 leading-8 flex-grow">{file}</p>
+        <PencilIcon className="w-5 h-8 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </Link>
+    </Tooltip>
   )
 }
