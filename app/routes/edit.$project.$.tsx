@@ -1,6 +1,6 @@
 import { AdjustmentsVerticalIcon, ArrowLeftIcon } from "@heroicons/react/20/solid"
 import { redirect, type ActionArgs, type LoaderArgs } from "@remix-run/node"
-import { Form, useLoaderData, useNavigate, useNavigation } from "@remix-run/react"
+import { Form, Link, useLoaderData, useNavigate, useNavigation } from "@remix-run/react"
 import clsx from "clsx"
 import Layout from "~/components/layout"
 import { checkNetworkExists } from "~/lib/docker.server"
@@ -117,9 +117,9 @@ export default function EditFile() {
   return (
     <Layout>
       <div className="md:flex items-start gap-2">
-        <button onClick={() => navigate(-1)} className={clsx('block w-min mb-2', buttonCN.normal, buttonCN.icon, buttonCN.transparent)}>
+        <Link to={`/library/${key}?file=${file.path}`} className={clsx('block w-min mb-2', buttonCN.normal, buttonCN.icon, buttonCN.transparent)}>
           <ArrowLeftIcon className='w-5 h-5' />
-        </button>
+        </Link>
         <div className="mb-6">
           <h2 className="text-3xl font-bold mb-1">
             Editor
