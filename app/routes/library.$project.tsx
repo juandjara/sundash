@@ -13,7 +13,7 @@ import {
   DocumentIcon,
   PlayIcon
 } from "@heroicons/react/24/outline"
-import { json, type LoaderArgs } from "@remix-run/node"
+import { json, redirect, type LoaderArgs } from "@remix-run/node"
 import { Form, Link, useActionData, useLoaderData, useNavigation, useRevalidator } from "@remix-run/react"
 import clsx from "clsx"
 import path from 'path'
@@ -132,10 +132,10 @@ export async function action({ request, params }: LoaderArgs) {
     if (op === 'delete') {
       if (configFiles.length === 1) {
         await deleteProjectFile(key, projectFolder, configFiles[0])
-        return json({ msg: `File ${configFiles[0]} deleted` })
+        return redirect(`/library/${key}`)
       } else {
         await deleteProject(projectFolder)
-        return json({ msg: 'Project deleted' })
+        return redirect('/')
       }
     }
 

@@ -6,7 +6,6 @@ import { ComposeLabels } from "./docker.util"
 import env from "./env.server"
 import path from 'node:path'
 import fs from 'node:fs/promises'
-import { redirect } from "@remix-run/node"
 import { removeFromDotEnv } from "./envfile.server"
 import fileExists from "./fileExists"
 
@@ -168,6 +167,17 @@ function isSubDirectory(parent: string, child: string) {
   return path.relative(child, parent).startsWith('..')
 }
 
+export function getValidEditPath(projectFolder: string, filePath: string) {
+  if (!isSubDirectory(env.configFolder, projectFolder)) {
+    throw new Error(`Invalid project folder: ${projectFolder}. Must be a subdirectory of ${env.configFolder}`)
+  }
+  if (!isSubDirectory(projectFolder, filePath!)) {
+    throw new Error(`Invalid file path: ${filePath}. Must be a subdirectory of ${projectFolder}`)
+  }
+  const fullPath = path.join(env.configFolder, projectFolder, filePath)
+  return fullPath
+}
+
 export async function deleteProject(projectFolder: string) {
   if (!isSubDirectory(env.configFolder, projectFolder)) {
     throw new Error(`Invalid project folder: ${projectFolder}. Must be a subdirectory of ${env.configFolder}`)
@@ -179,19 +189,6 @@ export async function deleteProject(projectFolder: string) {
   }
 
   await fs.rm(fullPath, { recursive: true })
-
-  throw redirect('/')
-}
-
-export function getValidEditPath(projectFolder: string, filePath: string) {
-  if (!isSubDirectory(env.configFolder, projectFolder)) {
-    throw new Error(`Invalid project folder: ${projectFolder}. Must be a subdirectory of ${env.configFolder}`)
-  }
-  if (!isSubDirectory(projectFolder, filePath!)) {
-    throw new Error(`Invalid file path: ${filePath}. Must be a subdirectory of ${projectFolder}`)
-  }
-  const fullPath = path.join(env.configFolder, projectFolder, filePath)
-  return fullPath
 }
 
 export async function deleteProjectFile(projectKey: string, projectFolder: string, file: string) {
@@ -205,8 +202,6 @@ export async function deleteProjectFile(projectKey: string, projectFolder: strin
     removeFromDotEnv(projectFolder, file),
     fs.rm(fullPath, { recursive: true })
   ])
-
-  throw redirect(`/library/${projectKey}`)
 }
 
 export async function saveFile({ projectFolder, filePath, compose }: {

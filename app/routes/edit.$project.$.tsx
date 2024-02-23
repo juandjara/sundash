@@ -11,7 +11,7 @@ import YAML from 'yaml'
 import { useRef, useState } from "react"
 import { envToText } from "~/lib/envfile.server"
 import LabelEditorDialog from "~/components/LabelEditorDialog"
-import { saveFile } from "~/lib/compose.server"
+import { deleteProjectFile, saveFile } from "~/lib/compose.server"
 
 export async function loader({ request, params }: LoaderArgs) {
   const key = params.project
@@ -28,7 +28,7 @@ export async function loader({ request, params }: LoaderArgs) {
   let file
   if (filePath === 'new') {
     file = {
-      path: 'docker-compose.yml',
+      path: '',
       text: 'version: "3.8"\nservices:\n  app:\n    image: node:lts\n    command: ["node", "--version"]\n',
     }
   }
@@ -74,6 +74,7 @@ export async function action({ request }: ActionArgs) {
   const data = await request.formData()
   const key = data.get('projectKey') as string
   const filename = data.get('filename') as string
+  const prev_filename = data.get('prev_filename') as string
   const compose = data.get('compose') as string
   const type = data.get('type') as 'yml' | 'env'
 
@@ -82,6 +83,10 @@ export async function action({ request }: ActionArgs) {
   
   if (!project) {
     throw new Response(`Project ${key} not found`, { status: 404 })
+  }
+
+  if (prev_filename && prev_filename !== filename) {
+    await deleteProjectFile(key, project.folder, prev_filename)
   }
 
   await saveFile({
@@ -130,6 +135,7 @@ export default function EditFile() {
       <Form ref={formRef} method="POST" className="relative z-10">
         <input type="hidden" name="projectKey" value={key} />
         <input type="hidden" name="type" value={type} />
+        <input type="hidden" name="prev_filename" value={file.path} />
         <div className="mb-6">
           <label className="text-zinc-500 mb-1 block" htmlFor="filename">File name</label>
           <input
@@ -138,6 +144,7 @@ export default function EditFile() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
+            placeholder="docker-compose.yml"
           />
         </div>
         {type === 'yml' && (
