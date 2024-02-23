@@ -1,6 +1,6 @@
 import { AdjustmentsVerticalIcon, ArrowLeftIcon } from "@heroicons/react/20/solid"
 import { redirect, type ActionArgs, type LoaderArgs } from "@remix-run/node"
-import { Form, Link, useLoaderData, useNavigate, useNavigation } from "@remix-run/react"
+import { Form, Link, useLoaderData, useNavigation } from "@remix-run/react"
 import clsx from "clsx"
 import Layout from "~/components/layout"
 import { checkNetworkExists } from "~/lib/docker.server"
@@ -104,7 +104,6 @@ export default function EditFile() {
   const [text, setText] = useState(file.text)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
-  const navigate = useNavigate()
 
   const transition = useNavigation()
   const busy = transition.state !== 'idle'
@@ -191,8 +190,6 @@ export default function EditFile() {
           >
             Reset
           </button>
-          <div className="flex-grow"></div>
-          <button type="button" onClick={() => navigate(-1)} className={clsx(buttonCN.normal, buttonCN.delete)}>Cancel</button>
         </div>
       </Form>
     </Layout>
