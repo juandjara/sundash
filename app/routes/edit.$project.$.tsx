@@ -92,10 +92,10 @@ export async function loader({ request, params }: LoaderArgs) {
 export async function action({ params, request }: ActionArgs) {
   const data = await request.formData()
   const key = params.project!
+  const prev_filename = params['*']
+  const type = (new URL(request.url).searchParams.get('type') || 'yml') as EditorFileType
   const filename = data.get('filename') as string
-  const prev_filename = data.get('prev_filename') as string
   const compose = data.get('compose') as string
-  const type = data.get('type') as EditorFileType
 
   const library = await readConfigFolder()
   const project = library.find((l) => l.key === key)
@@ -148,8 +148,6 @@ export default function EditFile() {
         </div>
       </div>
       <Form ref={formRef} method="POST" className="relative z-10">
-        <input type="hidden" name="type" value={type} />
-        <input type="hidden" name="prev_filename" value={file.path} />
         <div className="mb-6">
           <label className="text-zinc-500 mb-1 block" htmlFor="filename">File name</label>
           <input
