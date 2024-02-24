@@ -89,9 +89,9 @@ export async function loader({ request, params }: LoaderArgs) {
   }
 }
 
-export async function action({ request }: ActionArgs) {
+export async function action({ params, request }: ActionArgs) {
   const data = await request.formData()
-  const key = data.get('projectKey') as string
+  const key = params.project!
   const filename = data.get('filename') as string
   const prev_filename = data.get('prev_filename') as string
   const compose = data.get('compose') as string
@@ -148,7 +148,6 @@ export default function EditFile() {
         </div>
       </div>
       <Form ref={formRef} method="POST" className="relative z-10">
-        <input type="hidden" name="projectKey" value={key} />
         <input type="hidden" name="type" value={type} />
         <input type="hidden" name="prev_filename" value={file.path} />
         <div className="mb-6">
