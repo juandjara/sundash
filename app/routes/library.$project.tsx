@@ -103,6 +103,10 @@ export async function loader({ request, params }: LoaderArgs) {
     console.error(`Error getting logs for ${logKey}\n`, err)
   }
 
+  if ((urlService || urlFile) && !services.length) {
+    throw new Response('No services found for this path', { status: 404 })
+  }
+
   return {
     logs,
     urlFile,
@@ -122,6 +126,8 @@ export async function loader({ request, params }: LoaderArgs) {
 
 export async function action({ request, params }: LoaderArgs) {
   const key = params.project!
+  const sp = new URL(request.url).searchParams
+  const isDetail = Boolean(sp.get('service') || sp.get('file'))
   const fd = await request.formData()
   const op = fd.get('op') as ComposeOperation | FileOperation
   const envFiles = (fd.get('envFiles') as string).split(',').filter(Boolean)
@@ -130,7 +136,7 @@ export async function action({ request, params }: LoaderArgs) {
 
   try {
     if (op === 'delete') {
-      if (configFiles.length === 1) {
+      if (isDetail) {
         await deleteProjectFile(projectFolder, configFiles[0])
         return redirect(`/library/${key}`)
       } else {

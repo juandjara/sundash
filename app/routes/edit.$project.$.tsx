@@ -94,6 +94,8 @@ export async function action({ params, request }: ActionArgs) {
   const key = params.project!
   const prev_filename = params['*']
   const type = (new URL(request.url).searchParams.get('type') || 'yml') as EditorFileType
+
+  console.log({ key, prev_filename, type })
   const filename = data.get('filename') as string
   const compose = data.get('compose') as string
 
@@ -114,7 +116,7 @@ export async function action({ params, request }: ActionArgs) {
     compose,
   })
 
-  return redirect(`/edit/${key}/${filename}?type=${type}`)
+  return redirect(`/edit/${key}/${filename}?type=${type === 'appstore' ? 'yml' : type}`)
 }
 
 export default function EditFile() {
