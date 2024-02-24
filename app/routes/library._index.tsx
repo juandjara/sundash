@@ -1,4 +1,3 @@
-import { PlusIcon } from "@heroicons/react/24/outline"
 import { Link, useLoaderData } from "@remix-run/react"
 import clsx from "clsx"
 import AppCard from "~/components/AppCard"
@@ -6,7 +5,6 @@ import Layout from "~/components/layout"
 import { getProjectsFromContainers } from "~/lib/compose.server"
 import { ComposeLabels, SundashLabels, defaultLogo } from "~/lib/docker.util"
 import { type LibraryProject, readConfigFolder } from "~/lib/library.server"
-import { buttonCN } from "~/lib/styles"
 
 export async function loader() {
   const [libraryProjects, runningProjects] = await Promise.all([

@@ -6,7 +6,7 @@ export function getEditorData(yaml: string) {
   try {
     const compose = YAML.parse(yaml) as ComposeJSON
     const serviceKeys = Object.keys(compose.services)
-    const service = Object.keys(compose.services).find((key) => compose.services[key].labels?.[SundashLabels.ENABLE]) || serviceKeys[0]
+    const service = serviceKeys.find((key) => compose.services[key].labels?.[SundashLabels.ENABLE] === 'true') || serviceKeys[0]
     const logo = compose.services[service]?.labels?.[SundashLabels.LOGO] || defaultLogo(service)
     const title = compose.services[service]?.labels?.[SundashLabels.TITLE] || service
     const hasAuth = !!compose.services[service]?.labels?.[CaddyLabels.CADDY_AUTH]

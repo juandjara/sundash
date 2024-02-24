@@ -191,7 +191,7 @@ export async function deleteProject(projectFolder: string) {
   await fs.rm(fullPath, { recursive: true })
 }
 
-export async function deleteProjectFile(projectKey: string, projectFolder: string, file: string) {
+export async function deleteProjectFile(projectFolder: string, file: string) {
   const fullPath = getValidEditPath(projectFolder, file)
   const exists = await fileExists(fullPath)
   if (!exists) {

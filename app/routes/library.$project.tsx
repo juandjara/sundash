@@ -131,7 +131,7 @@ export async function action({ request, params }: LoaderArgs) {
   try {
     if (op === 'delete') {
       if (configFiles.length === 1) {
-        await deleteProjectFile(key, projectFolder, configFiles[0])
+        await deleteProjectFile(projectFolder, configFiles[0])
         return redirect(`/library/${key}`)
       } else {
         await deleteProject(projectFolder)
@@ -191,7 +191,6 @@ export default function ProjectDetail() {
   const isRunning = project.services.some((s) => s.state === 'running')
   const hasContainer = project.services.some((s) => s.state)
   const revalidator = useRevalidator()
-  const subtitle = urlService || urlFile || ''
   const service = project.services.length === 1 ? project.services[0] : null
 
   const actionData = useActionData()
@@ -238,23 +237,55 @@ export default function ProjectDetail() {
     </button>
   )
 
+  let backLink = '/'
+  if (urlFile) {
+    backLink = `/library/${project.key}`
+  }
+  if (urlService) {
+    backLink = `/library/${project.key}?file=${urlFile}`
+  }
+
+  function cardLink(service: typeof project.services[number]) {
+    let link = `/library/${project.key}?file=${service.file}`
+    if (urlFile) {
+      link = `/library/${project.key}?file=${service.file}&service=${service.key}`
+    }
+    if (urlService || project.services.length === 1) {
+      link = ''
+    }
+    return link
+  }
+
   return (
     <Layout>
-      <Link to={subtitle ? `/library/${project.key}` : '/'}>
-        <button type="button" className={clsx('mb-4 text-zinc-500', buttonCN.small, buttonCN.transparent, buttonCN.iconLeft)}>
-          <ArrowLeftIcon className="w-5 h-5" />
-          <p>Back</p>
-        </button>
-      </Link>
       <section className="flex flex-wrap gap-4 items-end mb-4 md:px-2">
-        <p className="flex-grow">
-          <span className="text-2xl font-semibold capitalize">{project.key}</span>
-          {subtitle && (
-            <span className="text-gray-500 text-lg ml-2">
-              / {subtitle}
+        <div className="flex-grow flex flex-col items-start">
+          <Link
+            to={backLink}
+            className={clsx(
+              '-ml-1 my-3 text-zinc-500',
+              buttonCN.small, buttonCN.transparent, buttonCN.iconLeft
+            )}
+          >
+            <ArrowLeftIcon className="w-5 h-5" />
+            <p>Back</p>
+          </Link>
+          <p>
+            <span className="text-2xl font-semibold capitalize">
+              {project.key}
             </span>
-          )}
-        </p>
+            {urlFile && (
+              <span className="text-gray-500 text-lg ml-2">
+                / {urlFile}
+              </span>
+            )}
+            {urlService && (
+              <span className="text-gray-500 text-lg ml-2">
+                / {urlService}
+              </span>
+            )}
+          </p>
+        </div>
         <Form method='POST'>
           <input type="hidden" name="envFiles" value={project.envFiles.join(',')} />
           <input type="hidden" name="configFiles" value={project.configFiles.join(',')} />
@@ -350,7 +381,7 @@ export default function ProjectDetail() {
             <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-4">
               {project.services.map((s) => (
                 <AppCard
-                  link={`/library/${project.key}?service=${s.key}`}
+                  link={cardLink(s)}
                   key={s.key}
                   logo={s.logo}
                   title={s.title}

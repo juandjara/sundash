@@ -176,10 +176,6 @@ export function getDetailedServices(ymlFiles: LibraryProject['ymlFiles'], contai
       }
       if (shouldExpandServices) {
         serviceEntries = entries
-        console.log({
-          entries,
-          serviceEntries
-        })
       }
 
       return serviceEntries.map(([key, value]) => {
@@ -194,6 +190,7 @@ export function getDetailedServices(ymlFiles: LibraryProject['ymlFiles'], contai
         }
       })
     }).flat()
+    console.log(services)
   } else if (containers.length > 0) {
     services = containers.map((container) => {
       const key = container.Labels[ComposeLabels.SERVICE]
