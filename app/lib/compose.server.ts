@@ -105,9 +105,9 @@ export async function getComposeLogs({
 }) {
   const target = isSingleService ? key : []
   const fileParams = {
-    config: configFiles.map((f) => path.join(projectFolder, f)),
+    config: configFiles.map((f) => path.join(env.configFolder, projectFolder, f)),
     composeOptions: envFiles.length
-      ? ['--env-file', ...envFiles.map((f) => path.join(projectFolder, f))]
+      ? ['--env-file', ...envFiles.map((f) => path.join(env.configFolder, projectFolder, f))]
       : [],
   }
 
@@ -151,9 +151,9 @@ export async function handleComposeOperation({
     }
     const method = opMap[op]
     const res = await method({
-      config: configFiles.map((f) => path.join(projectFolder, f)),
+      config: configFiles.map((f) => path.join(env.configFolder, projectFolder, f)),
       composeOptions: envFiles.length
-        ? ['--env-file', ...envFiles.map((f) => path.join(projectFolder, f))]
+        ? ['--env-file', ...envFiles.map((f) => path.join(env.configFolder, projectFolder, f))]
         : [],
       callback: (chunk) => emitter.emit(`log:${key}`, chunk.toString()),
     })

@@ -91,7 +91,13 @@ export async function loader({ request, params }: LoaderArgs) {
   })
 
   const logKey = services.length === 1 ? services[0].key : key
-  const folder = project?.dir || path.join(env.configFolder, libraryProject?.folder || '')
+  let folder = ''
+  if (project) {
+    folder = path.relative(env.configFolder, project.dir)
+  }
+  if (libraryProject) {
+    folder = libraryProject.folder
+  }
 
   let logs = ''
   try {
