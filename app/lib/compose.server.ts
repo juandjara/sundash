@@ -94,18 +94,20 @@ export async function getComposeLogs({
   key,
   envFiles,
   configFiles,
-  isSingleService
+  isSingleService,
+  projectFolder
 }: {
   key: string,
   envFiles: string[],
   configFiles: string[],
   isSingleService: boolean
+  projectFolder: string
 }) {
   const target = isSingleService ? key : []
   const fileParams = {
-    config: configFiles,
+    config: configFiles.map((f) => path.join(projectFolder, f)),
     composeOptions: envFiles.length
-      ? ['--env-file', ...envFiles]
+      ? ['--env-file', ...envFiles.map((f) => path.join(projectFolder, f))]
       : [],
   }
 

@@ -91,14 +91,16 @@ export async function loader({ request, params }: LoaderArgs) {
   })
 
   const logKey = services.length === 1 ? services[0].key : key
+  const folder = project?.dir || path.join(env.configFolder, libraryProject?.folder || '')
 
   let logs = ''
   try {
     logs = project ? await getComposeLogs({
       key: logKey,
       envFiles: [...envFiles],
-      configFiles: project.configFiles,
-      isSingleService: services.length === 1
+      configFiles: [...configFiles],
+      isSingleService: services.length === 1,
+      projectFolder: folder,
     }) : ''
   } catch (err) {
     console.error(`Error getting logs for ${logKey}\n`, err)
@@ -114,10 +116,10 @@ export async function loader({ request, params }: LoaderArgs) {
     urlService,
     project: {
       key,
-      dir: project?.dir || path.join(env.configFolder, libraryProject?.folder || ''),
+      dir: folder,
       rootEnv: libraryProject?.env,
-      envFiles: Array.from(envFiles),
-      configFiles: Array.from(configFiles),
+      envFiles: [...envFiles],
+      configFiles: [...configFiles],
       services: filteredServices,
       numServices: services.length,
       source: libraryProject ? 'library' : 'containers'
@@ -159,12 +161,6 @@ export async function action({ request, params }: LoaderArgs) {
       await addToDotEnv(projectFolder, configFiles[0])
       return json({ msg: 'Service enabled' })
     }
-
-    console.log({
-      envFiles,
-      configFiles,
-      projectFolder,
-    })
 
     const res = await handleComposeOperation({
       op,
