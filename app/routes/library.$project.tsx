@@ -140,12 +140,8 @@ export async function action({ request, params }: LoaderArgs) {
   const fd = await request.formData()
   const op = fd.get('op') as ComposeOperation | FileOperation
   const projectFolder = fd.get('folder') as string
-  const envFiles = (fd.get('envFiles') as string)
-    .split(',')
-    .filter(Boolean)
-  const configFiles = (fd.get('configFiles') as string)
-    .split(',')
-    .filter(Boolean)
+  const envFiles = (fd.get('envFiles') as string).split(',').filter(Boolean)
+  const configFiles = (fd.get('configFiles') as string).split(',').filter(Boolean)
 
   try {
     if (op === 'delete') {
@@ -206,13 +202,10 @@ function useLogs(id: string, initialLogs = '') {
 export default function ProjectDetail() {
   const { project, logs: initialLogs, urlService, urlFile } = useLoaderData<typeof loader>()
   const logKey = project.services.length === 1 ? project.services[0].key : project.key
-
   const logs = useLogs(logKey, initialLogs)
   const isRunning = project.services.some((s) => s.state === 'running')
   const hasContainer = project.services.some((s) => s.state)
   const revalidator = useRevalidator()
-  const service = project.services.length === 1 ? project.services[0] : null
-
   const actionData = useActionData()
   const fullLogs = useMemo(() => {
     const actionMsg = actionData?.msg || actionData?.error
@@ -221,7 +214,9 @@ export default function ProjectDetail() {
 
   const transition = useNavigation()
   const busy = transition.state !== 'idle'
-  const areFilesDefinedByEnv = !!project.rootEnv?.COMPOSE_FILE
+  const showEnableOrDisableBtn = !!project.rootEnv?.COMPOSE_FILE && project.configFiles.length === 1
+  const showEnableBtn = showEnableOrDisableBtn && !project.rootEnv?.COMPOSE_FILE.includes(project.configFiles[0])
+  const showDisableBtn = showEnableOrDisableBtn && project.rootEnv?.COMPOSE_FILE.includes(project.configFiles[0])
 
   const deleteButton = (
     <button
@@ -229,7 +224,7 @@ export default function ProjectDetail() {
       name="op"
       value="delete"
       onClick={(ev) => {
-        if (!confirm(`This action will remove all files associated with the ${service ? 'service' : 'project'}. Are you sure? This action cannot be undone.`)) {
+        if (!confirm(`This action will remove all files associated with the ${(urlFile || urlService) ? 'service' : 'project'}. Are you sure? This action cannot be undone.`)) {
           ev.preventDefault()
           ev.stopPropagation()
         }
@@ -309,10 +304,9 @@ export default function ProjectDetail() {
         <Form method='POST'>
           <input type="hidden" name="envFiles" value={project.envFiles.join(',')} />
           <input type="hidden" name="configFiles" value={project.configFiles.join(',')} />
-          <input type="hidden" name="areFilesDefinedByEnv" value={Number(areFilesDefinedByEnv)} />
           <input type="hidden" name="folder" value={project.dir} />
           <div className="flex flex-wrap items-center justify-end gap-2 mb-2">
-            {!service && (
+            {!urlFile && !urlService && (
               <Link to={`/edit/${project.key}/new`}>
                 <button className={clsx(buttonCN.normal, buttonCN.primary, buttonCN.iconLeft)}>
                   <PlusIcon className="w-6 h-6" />
@@ -331,29 +325,28 @@ export default function ProjectDetail() {
                 </Tooltip>
               )
             ) : null}
-            {service && areFilesDefinedByEnv ? (
-              service?.enabled ? (
-                <button
-                  aria-disabled={busy || hasContainer}
-                  name="op"
-                  value="disable"
-                  className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
-                >
-                  <MinusCircleIcon className="w-5 h-5" />
-                  <p>Disable</p>
-                </button>
-              ) : (
-                <button
-                  aria-disabled={busy || hasContainer}
-                  name="op"
-                  value="enable"
-                  className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
-                >
-                  <PlusCircleIcon className="w-5 h-5" />
-                  <p>Enable</p>
-                </button>
-              )
-            ) : null}
+            {showEnableBtn && (
+              <button
+                aria-disabled={busy || hasContainer}
+                name="op"
+                value="enable"
+                className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
+              >
+                <PlusCircleIcon className="w-5 h-5" />
+                <p>Enable</p>
+              </button>
+            )}
+            {showDisableBtn && (
+              <button
+                aria-disabled={busy || hasContainer}
+                name="op"
+                value="disable"
+                className={clsx(buttonCN.normal, buttonCN.outline, buttonCN.iconLeft)}
+              >
+                <MinusCircleIcon className="w-5 h-5" />
+                <p>Disable</p>
+              </button>
+            )}
             {hasContainer ? (
               <Tooltip position="left" title="Cannot delete a project with a running container">{deleteButton}</Tooltip>
             ) : deleteButton}
