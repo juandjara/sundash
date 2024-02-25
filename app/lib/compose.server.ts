@@ -129,12 +129,14 @@ export async function handleComposeOperation({
   op,
   key,
   configFiles,
-  envFiles
+  envFiles,
+  projectFolder
 }: {
   op: ComposeOperation,
   key: string,
-  configFiles: string[],
+  configFiles: string[]
   envFiles: string[]
+  projectFolder: string
 }) {
   try {
     const opMap = {
@@ -147,9 +149,9 @@ export async function handleComposeOperation({
     }
     const method = opMap[op]
     const res = await method({
-      config: configFiles.map((f) => path.join(env.configFolder, f)),
+      config: configFiles.map((f) => path.join(projectFolder, f)),
       composeOptions: envFiles.length
-        ? ['--env-file', ...envFiles.map((f) => path.join(env.configFolder, f))]
+        ? ['--env-file', ...envFiles.map((f) => path.join(projectFolder, f))]
         : [],
       callback: (chunk) => emitter.emit(`log:${key}`, chunk.toString()),
     })

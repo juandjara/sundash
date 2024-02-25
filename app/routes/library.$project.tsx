@@ -32,6 +32,7 @@ import {
   deleteProjectFile,
   deleteProject
 } from "~/lib/compose.server"
+import env from "~/lib/env.server"
 import { addToDotEnv, removeFromDotEnv } from "~/lib/envfile.server"
 import { getDetailedServices, readConfigFolder } from "~/lib/library.server"
 import { buttonCN } from "~/lib/styles"
@@ -113,7 +114,7 @@ export async function loader({ request, params }: LoaderArgs) {
     urlService,
     project: {
       key,
-      dir: project?.dir || libraryProject?.folder || '',
+      dir: project?.dir || path.join(env.configFolder, libraryProject?.folder || ''),
       rootEnv: libraryProject?.env,
       envFiles: Array.from(envFiles),
       configFiles: Array.from(configFiles),
@@ -130,9 +131,13 @@ export async function action({ request, params }: LoaderArgs) {
   const isDetail = Boolean(sp.get('service') || sp.get('file'))
   const fd = await request.formData()
   const op = fd.get('op') as ComposeOperation | FileOperation
-  const envFiles = (fd.get('envFiles') as string).split(',').filter(Boolean)
-  const configFiles = (fd.get('configFiles') as string).split(',').filter(Boolean)
   const projectFolder = fd.get('folder') as string
+  const envFiles = (fd.get('envFiles') as string)
+    .split(',')
+    .filter(Boolean)
+  const configFiles = (fd.get('configFiles') as string)
+    .split(',')
+    .filter(Boolean)
 
   try {
     if (op === 'delete') {
@@ -155,11 +160,18 @@ export async function action({ request, params }: LoaderArgs) {
       return json({ msg: 'Service enabled' })
     }
 
+    console.log({
+      envFiles,
+      configFiles,
+      projectFolder,
+    })
+
     const res = await handleComposeOperation({
       op,
       key,
-      envFiles: envFiles.filter(Boolean) as string[],
-      configFiles: configFiles.filter(Boolean) as string[],
+      envFiles,
+      configFiles,
+      projectFolder,
     })
     return json({ msg: res })
   } catch (err) {
