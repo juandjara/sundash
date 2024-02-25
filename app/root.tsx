@@ -41,6 +41,7 @@ export default function App() {
 }
 
 function ErrorLayout({ error }: { error: Error }) {
+  console.error(error)
   return (
     <html>
       <head>
@@ -92,15 +93,24 @@ function isDockerError(error: any): error is { exitCode: number, err: string; ou
   return typeof error === 'object' && error !== null && 'exitCode' in error && 'err' in error && 'out' in error
 }
 
+// TODO: maybe this should be configurable ??
+const DOCKER_SOCK = '/var/run/docker.sock'
+
+function isNoDockerSockError(error: any): error is { code: string } {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT' && error.syscall === 'connect' && error.address === DOCKER_SOCK
+}
+
 export function ErrorBoundary() {
   const error = useRouteError()
 
   if (isRouteErrorResponse(error)) {
     return <HttpErrorLayout error={error as HTTPError} />
-  } else if (error instanceof Error) {
-    return <ErrorLayout error={error} /> 
   } else if (isDockerError(error)) {
     return <HttpErrorLayout error={{ status: 500, statusText: 'Docker Error', data: error.err }} />
+  } else if (isNoDockerSockError(error)) {
+    return <HttpErrorLayout error={{ status: 500, statusText: 'Docker Error', data: `Cannot connect to the Docker daemon at ${DOCKER_SOCK}. Is the docker daemon running?` }} />
+  } else if (error instanceof Error) {
+    return <ErrorLayout error={error} /> 
   } else {
     return (
       <html>

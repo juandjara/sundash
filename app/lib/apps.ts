@@ -4,7 +4,7 @@ import path from 'path'
 import YAML from 'yaml'
 import type { PsService} from "./docker.server"
 import { getPS } from "./docker.server"
-import { getComposeFiles } from "./envfile.server"
+import type Dockerode from "dockerode"
 
 export type XSundash = {
   title: string
@@ -76,7 +76,7 @@ export function validateComposeJSON(app: ComposeJSON) {
 }
 
 export async function getApp(filename: string, yaml: string) {
-  const composeFiles = await getComposeFiles()
+  const composeFiles = [] as string[]  // await getComposeFiles()
   const app = YAML.parse(yaml) as ComposeJSON
   if (!validateComposeJSON(app)) {
     throw new Error(`Invalid YAML: \n${yaml}`)
@@ -101,9 +101,28 @@ export async function getApp(filename: string, yaml: string) {
   return appData as ComposeJSONExtra
 }
 
+type Runtime = {
+  service: string
+  status: string
+  state: string
+}
+
+export type Project = {
+  dir: string
+  project: string
+  configFiles: string[]
+  envFiles: string[]
+  containers: Record<string, Dockerode.ContainerInfo>
+  config: ComposeJSON
+  title: string
+  logo: string
+  key: string
+  runtime: Runtime
+}
+
 export async function getApps() {
   const configFolder = env.configFolder
-  const composeFiles = await getComposeFiles()
+  const composeFiles = [] as string[] // await getComposeFiles()
   const dir = await fs.readdir(configFolder)
   const ymls = dir.filter((d) => path.extname(d) === '.yml')
   const promises = ymls.map((y) => fs.readFile(path.join(configFolder, y), 'utf-8'))
@@ -160,23 +179,33 @@ export async function saveApp({ name, compose }: { name: string; compose: string
   await fs.writeFile(fullPath, compose)
 }
 
-export function getStateColor(app: ComposeJSONExtra) {
-  if (!app?.runtime) {
+export type ContainerState = 'created' | 'restarting' | 'running' | 'paused' | 'exited' | 'dead' | undefined
+
+export function getStateColor(state: ContainerState) {
+  if (!state || state === 'created') {
     return 'bg-zinc-300'
   }
-  if (app.runtime?.state === 'up') {
+  if (state === 'exited') {
+    return 'bg-red-100'
+  }
+  if (state === 'running') {
     return 'bg-green-500'
+  }
+  if (state === 'paused') {
+    return 'bg-green-100'
+  }
+  if (state === 'restarting') {
+    return 'bg-yellow-500'
   }
   return 'bg-red-500'
 }
 
-export function getStateTitle(app: ComposeJSONExtra) {
+export function getStateTitle(app: Project) {
   if (!app?.runtime) {
     return 'Not created'
   }
-  if (app.runtime?.state === 'up') {
+  if (app.runtime?.state === 'running') {
     return 'Running'
   }
   return 'Not running'
 }
-

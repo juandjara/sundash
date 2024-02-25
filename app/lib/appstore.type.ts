@@ -31,6 +31,7 @@ type DockerLabel = {
 }
 
 export type Template = {
+  index?: number
   version: string
   type: TemplateType
   title: string

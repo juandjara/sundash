@@ -1,18 +1,21 @@
-import { ArrowLeftIcon, ArrowRightIcon, PlusCircleIcon } from "@heroicons/react/20/solid"
-import { Link, useSearchParams } from "@remix-run/react"
+import { ArrowLeftIcon, ArrowRightIcon, PlusIcon } from "@heroicons/react/20/solid"
+import { Link, useLoaderData, useSearchParams } from "@remix-run/react"
 import clsx from "clsx"
-import { buttonCN } from "~/lib/styles"
+import { buttonCN, inputCN } from "~/lib/styles"
 import type { Template } from "~/lib/appstore.type"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { getEnvComment } from "~/lib/appstore"
 import { parseMarkdown } from "~/lib/parseMarkdown"
 import Logo from "./Logo"
 
 export default function TemplateDetail({ template }: { template: Template }) {
+  const { projects } = useLoaderData() as { projects: string[] }
+  const [project, setProject] = useState('')
+
   const [params, setParams] = useSearchParams()
   const markdowns = useMemo(() => {
     const description = template.description ? parseMarkdown(template.description) : ''
-    const note = template.note || '' // ? parseMarkdown(app.note.replace('&lt', '<').replace('&gt', '>')) : ''
+    const note = template.note || ''
     const env = template.env?.map((e) => {
       return {
         ...e,
@@ -28,7 +31,7 @@ export default function TemplateDetail({ template }: { template: Template }) {
   }, [template])
 
   function close() {
-    params.delete('open')
+    params.delete('index')
     setParams(params)
   }
 
@@ -50,12 +53,31 @@ export default function TemplateDetail({ template }: { template: Template }) {
         <p
           className="max-w-prose text-zinc-500 text-sm [&_a]:underline [&>p+p]:mt-2"
           dangerouslySetInnerHTML={{ __html: markdowns.note }}></p>
-        <Link to={`/edit?${params.toString()}&source=appstore`}>
-          <button className={clsx('mt-2 mb-12', buttonCN.primary, buttonCN.big, buttonCN.iconLeft)}>
-            <PlusCircleIcon className="w-6 h-6" />
-            <p>Edit and Install</p>
-          </button>
-        </Link>
+        <div className="flex gap-3 items-center mt-4 mb-12">
+          <select 
+            value={project}
+            onChange={(e) => setProject(e.target.value)}
+            className={clsx('bg-zinc-50 p-[6px]', inputCN)}
+          >
+            <option value='' disabled>Select a project</option>
+            {projects.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+          <Link 
+            to={`/edit/${project}/new?type=appstore&index=${template.index}`}
+            className={clsx(
+              { 'opacity-50 pointer-events-none': !project },
+              'flex-shrink-0',
+              buttonCN.primary, buttonCN.normal, buttonCN.iconLeft
+            )}
+          >
+            <PlusIcon className="w-6 h-6" />
+            <p>Add to project</p>
+          </Link>
+        </div>
       </header>
       <div className="space-y-6 my-6 mx-2">
         {template.image ? (

@@ -1,25 +1,26 @@
 import { PlusIcon } from "@heroicons/react/20/solid"
 import { Link, useLoaderData } from "@remix-run/react"
 import clsx from "clsx"
-import Logo from "~/components/Logo"
-import Tooltip from "~/components/Tooltip"
+import { useMemo } from "react"
+import AppCard from "~/components/AppCard"
 import Layout from "~/components/layout"
-import type { ComposeJSONExtra} from "~/lib/apps"
-import { getApps, getStateColor, getStateTitle } from "~/lib/apps"
+import { getProjectsFromContainers } from "~/lib/compose.server"
+import { getLogoFromContainer, getTitleFromContainer } from "~/lib/docker.util"
 import { buttonCN } from "~/lib/styles"
 
 export async function loader() {
-  const apps = await getApps()
-  return { apps }
+  const projects = await getProjectsFromContainers()
+  return { projects }
 }
 
 export default function Apps() {
-  const { apps } = useLoaderData() as { apps: ComposeJSONExtra[] }
-  const enabledApps = apps.filter((app) => app.enabled)
-  const disabledApps = apps.filter((app) => !app.enabled)
+  const { projects } = useLoaderData() as Awaited<ReturnType<typeof loader>>
 
-  const numCreatedApps = enabledApps.filter((app) => app.runtime).length
-  const numRunningApps = enabledApps.filter((app) => app.runtime?.state === 'up').length
+  const numRunningApps = useMemo(
+    () => projects.filter((app) => Object.values(app.containers).some((c) => c.State === 'running')).length,
+    [projects]
+  )
+  const numStoppedApps = projects.length - numRunningApps
 
   return (
     <Layout>
@@ -27,7 +28,7 @@ export default function Apps() {
         <h2 className="text-2xl font-semibold flex-grow">
           <span>Apps</span>
           {' '}<small className="text-sm text-zinc-500">
-            {numRunningApps} running / {numCreatedApps} created / {enabledApps.length} total
+            {numRunningApps} running / {numStoppedApps} stopped / {projects.length} total
           </small>
         </h2>
         <Link to='/edit?source=new'>
@@ -37,61 +38,36 @@ export default function Apps() {
           </button>
         </Link>
       </div>
-      {apps.length === 0 && (
+      {projects.length === 0 && (
         <p className="text-center text-lg mt-4">
           You don't have any apps yet. 
           {' '}<Link className="underline text-pink-500" to='/new'>Create one</Link>
           {' '}or install from the <Link className="underline text-pink-500" to='/appstore'>App Store</Link>.
         </p>
       )}
-      <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 py-4 md:px-2">
-        {enabledApps.map((app) => (
-          <AppCard app={app} key={app.id} />
+      <div className="flex flex-wrap gap-4">
+        {projects.map((project) => (
+          <section key={project.key} className="relative my-2 hover:bg-pink-50/50 rounded-lg transition-colors">
+            <h3 className="not-sr-only capitalize text-xl font-semibold md:px-2 py-2 border-b border-gray-200">
+              {project.key}
+            </h3>
+            <Link to={`/library/${project.key}`} className="absolute inset-0">
+              <span className="sr-only">{project.key}</span>
+            </Link>
+            <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4 pb-2 md:px-2">
+              {project.containers.map((container) => (
+                <AppCard
+                  key={container.Id}
+                  title={getTitleFromContainer(container)}
+                  logo={getLogoFromContainer(container)}
+                  status={container.Status}
+                  state={container.State}
+                />
+              ))}
+            </ul>
+          </section>
         ))}
-      </ul>
-      {disabledApps.length > 0 && (
-        <>
-          <h2 className="mt-8 text-xl font-semibold">
-            <span>Disabled apps</span>
-            {' '}<small className="text-sm text-zinc-500">{disabledApps.length}</small>
-          </h2>
-          <ul className="flex flex-wrap items-center justify-center md:justify-start gap-4 py-4 px-2">
-            {disabledApps.map((app) => (
-              <AppCard app={app} key={app.id} />
-            ))}
-          </ul>
-        </>
-      )}
-    </Layout>
-  )
-}
-
-function AppCard({ app }: { app: ComposeJSONExtra }) {
-  return (
-    <li
-      className={clsx(
-        { 'opacity-50 bg-gray-100': !app.enabled },
-        'shadow hover:shadow-md transition-shadow',
-        'relative group flex flex-col place-items-center border border-zinc-200 py-3 rounded-xl w-40'
-      )}
-    >
-      <Link to={`/apps/${app.id}`} className="absolute inset-0">
-        <span className="sr-only">{app.title}</span>
-      </Link>
-      <div className="absolute top-2 right-2">              
-        <Tooltip title={getStateTitle(app)}>
-          <div className={clsx(
-            getStateColor(app),
-            'w-4 h-4 rounded-full'
-          )}></div>
-        </Tooltip>
       </div>
-      <Logo
-        src={app.logo}
-        alt='app logo'
-        className="pointer-events-none w-20 h-20 block object-contain p-0.5 group-hover:scale-125 duration-300 transition-transform transform"
-      />
-      <p className="not-sr-only truncate max-w-full px-2 capitalize text-center mt-2">{app.title}</p>
-    </li>
+    </Layout>
   )
 }

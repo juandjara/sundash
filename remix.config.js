@@ -15,5 +15,6 @@ module.exports = {
   // serverBuildPath: "build/index.js",
   serverDependenciesToBundle: [
     /^remix-utils.*/,
+    '@epic-web/remember',
   ]
 }

@@ -14,7 +14,7 @@ invariant(baseAppsDomain, 'process.env.BASE_APPS_DOMAIN must be defined')
 
 // line for caddyfile label 'caddy.authorize'
 const authorizeConfig = process.env.AUTHORIZE_CONFIG || 'with auth_policy'
-invariant(authorizeConfig, 'process.env.AUTHORIZE_CONFIG must be defined')
+invariant(authorizeConfig?.startsWith('with '), 'process.env.AUTHORIZE_CONFIG must be defined and start with "with "')
 
 const env = { configFolder, dockerProxyNetwork, baseAppsDomain, authorizeConfig }
 export default env
