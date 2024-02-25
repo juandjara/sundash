@@ -134,10 +134,15 @@ export default function EditFile() {
     setText(file.text)
   }
 
+  let link = `/library/${key}`
+  if (type !== 'env')  {
+    link += `?file=${file.path}`
+  }
+
   return (
     <Layout>
       <div className="md:flex items-start gap-2">
-        <Link to={`/library/${key}?file=${file.path}`} className={clsx('block w-min mb-2', buttonCN.normal, buttonCN.icon, buttonCN.transparent)}>
+        <Link to={link} className={clsx('block w-min mb-2', buttonCN.normal, buttonCN.icon, buttonCN.transparent)}>
           <ArrowLeftIcon className='w-5 h-5' />
         </Link>
         <div className="mb-6">
