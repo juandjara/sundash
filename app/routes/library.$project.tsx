@@ -142,6 +142,7 @@ export async function action({ request, params }: LoaderArgs) {
   const projectFolder = fd.get('folder') as string
   const envFiles = (fd.get('envFiles') as string).split(',').filter(Boolean)
   const configFiles = (fd.get('configFiles') as string).split(',').filter(Boolean)
+  const enabledFiles = (fd.get('enabledFiles') as string).split(',').filter(Boolean)
 
   try {
     if (op === 'delete') {
@@ -168,7 +169,7 @@ export async function action({ request, params }: LoaderArgs) {
       op,
       key,
       envFiles,
-      configFiles,
+      configFiles: enabledFiles.length ? enabledFiles : configFiles,
       projectFolder,
     })
     return json({ msg: res })
@@ -214,10 +215,13 @@ export default function ProjectDetail() {
 
   const transition = useNavigation()
   const busy = transition.state !== 'idle'
-  const showEnableOrDisableBtn = !!project.rootEnv?.COMPOSE_FILE && project.configFiles.length === 1
-  const showEnableBtn = showEnableOrDisableBtn && !project.rootEnv?.COMPOSE_FILE.includes(project.configFiles[0])
-  const showDisableBtn = showEnableOrDisableBtn && project.rootEnv?.COMPOSE_FILE.includes(project.configFiles[0])
-
+  const enabledFilesEnv = project.rootEnv?.COMPOSE_FILE
+  const separator = project.rootEnv?.COMPOSE_FILE_SEPARATOR || ':'
+  const enabledFiles = (enabledFilesEnv || '')?.split(separator).filter(Boolean) || []
+  const showEnableOrDisableBtn = !!enabledFilesEnv && project.configFiles.length === 1
+  const showEnableBtn = showEnableOrDisableBtn && !enabledFilesEnv.includes(project.configFiles[0])
+  const showDisableBtn = showEnableOrDisableBtn && enabledFilesEnv.includes(project.configFiles[0])
+  
   const deleteButton = (
     <button
       aria-disabled={busy || hasContainer}
@@ -302,6 +306,7 @@ export default function ProjectDetail() {
           </p>
         </div>
         <Form method='POST'>
+          <input type="hidden" name="enabledFiles" value={enabledFiles.join(',')} />
           <input type="hidden" name="envFiles" value={project.envFiles.join(',')} />
           <input type="hidden" name="configFiles" value={project.configFiles.join(',')} />
           <input type="hidden" name="folder" value={project.dir} />
