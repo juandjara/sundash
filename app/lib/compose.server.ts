@@ -217,3 +217,19 @@ export async function saveFile({ projectFolder, filePath, compose }: {
   await fs.writeFile(fullPath, compose)
   return fullPath
 }
+
+export async function createProject(projectFolder: string) {
+  if (!isSubDirectory(env.configFolder, projectFolder)) {
+    throw new Error(`Invalid project folder: ${projectFolder}. Must be a subdirectory of ${env.configFolder}`)
+  }
+
+  const ls = await fs.readdir(env.configFolder, { recursive: true })
+  const exists = ls.includes(projectFolder)
+  if (exists) {
+    throw new Error(`Project folder already exists: ${projectFolder}`)
+  }
+
+  const fullPath = path.join(env.configFolder, projectFolder)
+  await fs.mkdir(fullPath)
+  return fullPath
+}

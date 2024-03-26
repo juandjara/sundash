@@ -1,10 +1,12 @@
-import { Link, useLoaderData } from "@remix-run/react"
+import { PlusIcon } from "@heroicons/react/24/outline"
+import { Link, useFetcher, useLoaderData } from "@remix-run/react"
 import clsx from "clsx"
 import AppCard from "~/components/AppCard"
 import Layout from "~/components/layout"
 import { getProjectsFromContainers } from "~/lib/compose.server"
 import { ComposeLabels, SundashLabels, defaultLogo } from "~/lib/docker.util"
 import { type LibraryProject, readConfigFolder } from "~/lib/library.server"
+import { buttonCN } from "~/lib/styles"
 
 export async function loader() {
   const [libraryProjects, runningProjects] = await Promise.all([
@@ -52,28 +54,46 @@ export default function Library() {
     return `${folder} - ${project.ymlFiles.length} apps`
   }
 
+  const createProjectFetcher = useFetcher()
+  const busy = createProjectFetcher.state !== 'idle'
+
+  function createProject() {
+    const name = prompt('Enter the name of the new project')
+    if (!name) {
+      return
+    }
+
+    createProjectFetcher.submit({ name }, {
+      method: 'POST',
+      action: '/api/create-project',
+      encType: 'application/json',
+    })
+  }
+
   return (
     <Layout>
-      <header className="mb-6 flex flex-wrap gap-2 justify-between items-end">
-        <div>
-          <h2 className="mb-3">
-            <span className="text-3xl font-semibold">App Library</span>
-            <span className="ml-2 text-sm text-gray-500">{libraryProjects.length} projects</span>
-          </h2>
-          <div className="max-w-prose">
-            <p className="mb-2">
-              This page lists all the projects in the app library. Each project is a folder in the <code>config</code> directory that contains a <code>.env</code> file and one or more <code>.yml</code> files. Each <code>.yml</code> file is a Docker Compose file that defines a set of services.
-            </p>
-            <p>
-              Each <code>.yml</code> file not associated with a <code>.env</code> file is shown as a standalone project.
-            </p>
-          </div>
-        </div>
-        {/* <button className={clsx(buttonCN.normal, buttonCN.primary, buttonCN.iconLeft)}>
+      <header className="mb-3 flex flex-wrap gap-2 justify-between items-end">
+        <h2>
+          <span className="text-3xl font-semibold">App Library</span>
+          <span className="ml-2 text-sm text-gray-500">{libraryProjects.length} projects</span>
+        </h2>
+        <button
+          onClick={createProject}
+          className={clsx(buttonCN.normal, buttonCN.primary, buttonCN.iconLeft)}
+          aria-disabled={busy}
+        >
           <PlusIcon className="w-6 h-6" />
-          <p>New project</p>
-        </button> */}
+          {busy ? 'Creating...' : 'New project'}
+        </button>
       </header>
+      <div className="max-w-prose mb-6">
+        <p className="mb-2">
+          This page lists all the projects in the app library. Each project is a folder in the <code>config</code> directory that contains a <code>.env</code> file and one or more <code>.yml</code> files. Each <code>.yml</code> file is a Docker Compose file that defines a set of services.
+        </p>
+        <p>
+          Each <code>.yml</code> file not associated with a <code>.env</code> file is shown as a standalone project.
+        </p>
+      </div>
       {libraryProjects.map((project) => (
         <section key={project.folder} className={clsx(
           'mb-6 px-2 rounded-lg relative',
