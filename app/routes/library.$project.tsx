@@ -11,7 +11,8 @@ import {
   ArrowUpTrayIcon,
   CloudArrowDownIcon,
   DocumentIcon,
-  PlayIcon
+  PlayIcon,
+  ArrowTopRightOnSquareIcon
 } from "@heroicons/react/24/outline"
 import { json, redirect, type LoaderArgs } from "@remix-run/node"
 import { Form, Link, useActionData, useLoaderData, useNavigation, useRevalidator } from "@remix-run/react"
@@ -410,6 +411,18 @@ export default function ProjectDetail() {
               ))}
             </ul>
           </section>
+          {project.services.length === 1 && (
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href={project.services[0].link}
+              aria-disabled={!project.services[0].link}
+              className={clsx(buttonCN.normal, buttonCN.transparent, buttonCN.iconLeft, 'mx-2 max-w-max')}
+            >
+              <ArrowTopRightOnSquareIcon className="w-6 h-6" />
+              <p>Open project</p>
+            </a>
+          )}
           <section className="mt-9 mb-3 md:px-2">
             <h3 className="text-xl font-semibold flex-grow mb-2">Config files</h3>
             <ul className="columns-2">

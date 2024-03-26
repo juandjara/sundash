@@ -6,7 +6,7 @@ import { type ComposeJSON, validateComposeJSON } from "./apps"
 import { parseEnvFileText } from "./envfile.server"
 import type Dockerode from "dockerode"
 import { type ContainerState } from "./docker.server"
-import { ComposeLabels, SundashLabels, defaultLogo } from "./docker.util"
+import { CaddyLabels, ComposeLabels, SundashLabels, defaultLogo } from "./docker.util"
 
 function getComposeJSONMeta({ filename, composeJSON, envJSON }: {
   filename: string
@@ -161,6 +161,7 @@ export function getDetailedServices(ymlFiles: LibraryProject['ymlFiles'], contai
     status: string
     enabled: boolean
     file: string
+    link: string | undefined
   }[]
   
   const shouldExpandServices = ymlFiles.length === 1
@@ -187,6 +188,7 @@ export function getDetailedServices(ymlFiles: LibraryProject['ymlFiles'], contai
           status: containerServiceMap[key]?.Status,
           enabled: yml.meta.enabled,
           file: yml.path,
+          link: value?.labels?.[CaddyLabels.CADDY_URL]
         }
       })
     }).flat()
@@ -201,6 +203,7 @@ export function getDetailedServices(ymlFiles: LibraryProject['ymlFiles'], contai
         status: container.Status,
         enabled: true,
         file: '',
+        link: container.Labels[CaddyLabels.CADDY_URL]
       }
     })
   }
