@@ -222,6 +222,7 @@ export default function ProjectDetail() {
   const showEnableOrDisableBtn = !!enabledFilesEnv && project.configFiles.length === 1
   const showEnableBtn = showEnableOrDisableBtn && !enabledFilesEnv.includes(project.configFiles[0])
   const showDisableBtn = showEnableOrDisableBtn && enabledFilesEnv.includes(project.configFiles[0])
+  const link = project.services[0]?.link
   
   const deleteButton = (
     <button
@@ -415,8 +416,8 @@ export default function ProjectDetail() {
             <a
               target="_blank"
               rel="noopener noreferrer"
-              href={project.services[0].link}
-              aria-disabled={!project.services[0].link}
+              href={(link || '')?.startsWith('http') ? link : `http://${link}`}
+              aria-disabled={!link}
               className={clsx(buttonCN.normal, buttonCN.transparent, buttonCN.iconLeft, 'mx-2 max-w-max')}
             >
               <ArrowTopRightOnSquareIcon className="w-6 h-6" />
