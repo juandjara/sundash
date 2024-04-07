@@ -45,7 +45,7 @@ export function applyProxyConfig(yaml: string, editorEnv: EditorEnv, editorData:
     }
 
     const port = getPortFromPortLine(composeService.ports?.[0] || '')
-    const url = `http://${service}.${baseAppsDomain}`.replace(/\/$/, '')
+    const url = `${service}.${baseAppsDomain}`.replace(/\/$/, '')
     
     const labels = {
       [SundashLabels.ENABLE]: 'true',
