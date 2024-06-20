@@ -106,6 +106,7 @@ export async function getComposeLogs({
   const target = isSingleService ? key : []
   const fileParams = {
     config: configFiles.map((f) => path.join(env.configFolder, projectFolder, f)),
+    commandOptions: ['--tail 100'],
     composeOptions: envFiles.length
       ? ['--env-file', ...envFiles.map((f) => path.join(env.configFolder, projectFolder, f))]
       : [],
@@ -113,7 +114,7 @@ export async function getComposeLogs({
 
   compose.logs(target, {
     ...fileParams,
-    commandOptions: ['--follow'],
+    commandOptions: ['--follow', '--tail 100'],
     callback: (chunk) => emitter.emit(`log:${key}`, chunk.toString()),
   }).catch(err => {
     console.error(`Error getting logs for ${key}\n`, err)
